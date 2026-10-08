@@ -5,7 +5,7 @@ import { isScored, totalRounds } from '../engine/engine';
 import { Ctx, type GameCtx, type Viewer } from './context';
 import { saveGame, type ClassInfo } from './store';
 import { currentUser, logout, type User } from './auth';
-import { Badge } from './components';
+import { Badge, Empty } from './components';
 import Login from './pages/Login';
 import Home from './pages/Home';
 import Classes from './pages/Classes';
@@ -35,7 +35,7 @@ const TEAM_NAV: { group: string; items: { id: string; label: string }[] }[] = [
     { id: 'leaderboard', label: 'Leaderboard' }, { id: 'history', label: 'History' },
   ] },
 ];
-const GM_NAV = [{ group: 'Game Master', items: [{ id: 'gm', label: 'Round Control' }, { id: 'reports', label: 'Market Share & Positioning' }, { id: 'leaderboard', label: 'Leaderboard' }] }];
+const GM_NAV = [{ group: 'Game Master', items: [{ id: 'gm', label: 'Round Control' }, { id: 'players', label: 'Players & Companies' }, { id: 'reports', label: 'Market Share & Positioning' }, { id: 'leaderboard', label: 'Leaderboard' }] }];
 
 export default function App() {
   const [user, setUser] = useState<User | null>(() => currentUser());
@@ -44,32 +44,34 @@ export default function App() {
   const [viewer, setViewer] = useState<Viewer>({ role: 'gm' });
   const [page, setPage] = useState('overview');
   const [menuOpen, setMenuOpen] = useState(false);
-  const [teamChosen, setTeamChosen] = useState(true);
-  const [pinPrompt, setPinPrompt] = useState<{ companyId: string; value: string; error?: string } | null>(null);
 
   const setGame = useCallback((g: GameState) => {
     setGameState(g);
     saveGame(g);
   }, []);
 
+  const isAdmin = user?.role === 'admin';
+  const membership = game && user ? game.members?.find((m) => m.username === user.username) : undefined;
+
   const openGame = (g: GameState) => {
     setGameState(g);
     if (user?.role === 'admin') { setViewer({ role: 'gm' }); setPage('gm'); return; }
-    const firstHuman = g.companies.find((c) => !c.isBot && !g.pins?.[c.id]);
-    if (firstHuman) { setViewer({ role: 'team', companyId: firstHuman.id }); setPage('overview'); setTeamChosen(true); }
-    else setTeamChosen(false);
+    const m = g.members?.find((x) => x.username === user?.username);
+    if (m) setViewer({ role: 'team', companyId: m.companyId });
+    setPage('overview');
   };
 
   const signOut = () => { logout(); setGameState(null); setCls(null); setUser(null); };
-  const isAdmin = user?.role === 'admin';
 
   const ctx: GameCtx | null = useMemo(() => {
-    if (!game) return null;
+    if (!game || !user) return null;
     const company = viewer.role === 'team' ? game.companies.find((c) => c.id === viewer.companyId) ?? null : null;
     const decision = company ? game.decisions[company.id] ?? carryForward(undefined, company, game.scenario, game.round) : null;
-    const readOnly = !company || company.isBot || company.status === 'bankrupt' || game.phase !== 'OPEN' || !!decision?.submitted;
+    const owner = company ? game.members?.find((m) => m.companyId === company.id)?.username : undefined;
+    const notMine = !!company && !isAdmin && owner !== user.username;
+    const readOnly = !company || company.isBot || company.status === 'bankrupt' || game.phase !== 'OPEN' || !!decision?.submitted || notMine;
     return {
-      game, setGame, viewer, company, decision, readOnly,
+      game, setGame, viewer, company, decision, readOnly, user,
       go: (p: string) => { setPage(p); setMenuOpen(false); window.scrollTo(0, 0); },
       update: (fn: (d: Decision) => void) => {
         if (!company || readOnly) return;
@@ -79,59 +81,27 @@ export default function App() {
         setGame({ ...game, decisions: { ...game.decisions, [company.id]: next } });
       },
     };
-  }, [game, viewer, setGame]);
+  }, [game, viewer, setGame, user, isAdmin]);
 
   if (!user) return <Login onLogin={setUser} />;
-  if (!cls && !game) return <Classes user={user} onSelect={setCls} onSignOut={signOut} />;
-  if (!game || !ctx) return <Home user={user} cls={cls!} onOpen={openGame} onBack={() => setCls(null)} onSignOut={signOut} />;
+  if (!cls && !game) return <Classes user={user} onSelect={setCls} onOpenGame={openGame} onSignOut={signOut} />;
+  if (!game || !ctx) return cls && <Home user={user} cls={cls!} onOpen={openGame} onBack={() => setCls(null)} onSignOut={signOut} />;
 
-  const switchViewer = (val: string) => {
-    if (val === 'gm') { if (!isAdmin) return; setViewer({ role: 'gm' }); setPage('gm'); return; }
-    if (game.pins?.[val] && !isAdmin) { setPinPrompt({ companyId: val, value: '' }); return; }
-    setViewer({ role: 'team', companyId: val });
-    if (page === 'gm') setPage('overview');
-  };
-
-  const pinModal = pinPrompt && (
-    <div className="overlay" onClick={() => setPinPrompt(null)}>
-      <form className="modal stack" onClick={(e) => e.stopPropagation()} onSubmit={(e) => {
-        e.preventDefault();
-        if (game.pins?.[pinPrompt.companyId] === pinPrompt.value) { setViewer({ role: 'team', companyId: pinPrompt.companyId }); setPage(teamChosen && page !== 'gm' ? page : 'overview'); setTeamChosen(true); setPinPrompt(null); }
-        else setPinPrompt({ ...pinPrompt, error: 'Wrong PIN' });
-      }}>
-        <h3>Team PIN</h3>
-        <input id="pin-input" type="password" autoFocus value={pinPrompt.value} onChange={(e) => setPinPrompt({ ...pinPrompt, value: e.target.value })} />
-        {pinPrompt.error && <div className="bad small">{pinPrompt.error}</div>}
-        <div className="row"><button className="btn primary" type="submit">Open</button><button className="btn" type="button" onClick={() => setPinPrompt(null)}>Cancel</button></div>
-      </form>
-    </div>
-  );
-
-  if (!teamChosen && !isAdmin) {
-    const humans = game.companies.filter((c) => !c.isBot);
+  if (!isAdmin && !membership) {
     return (
       <div className="hero">
-        <div className="spread" style={{ marginBottom: 24 }}>
-          <div className="row"><button className="btn sm" onClick={() => setGameState(null)}>Back to games</button><h1 style={{ margin: 0 }}>{game.name}</h1></div>
-        </div>
-        <div className="card">
-          <div className="card-head"><h3>Choose your team</h3></div>
-          <div className="class-list">
-            {humans.map((c) => (
-              <div key={c.id} className="class-item">
-                <button className="class-open" onClick={() => { if (game.pins?.[c.id]) setPinPrompt({ companyId: c.id, value: '' }); else { setViewer({ role: 'team', companyId: c.id }); setPage('overview'); setTeamChosen(true); } }}>
-                  <span className="class-code" style={{ background: c.color }}>{c.name.slice(0, 2).toUpperCase()}</span>
-                  <span className="class-name">{c.name}</span>
-                  <span className="small muted">{game.pins?.[c.id] ? 'PIN required' : 'Open'}</span>
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-        {pinModal}
+        <div className="row" style={{ marginBottom: 24 }}><button className="btn sm" onClick={() => { setGameState(null); if (game.solo) setCls(null); }}>Back</button><h1 style={{ margin: 0 }}>{game.name}</h1></div>
+        <Empty>You have not been added to this game.</Empty>
       </div>
     );
   }
+
+  const switchViewer = (val: string) => {
+    if (!isAdmin) return;
+    if (val === 'gm') { setViewer({ role: 'gm' }); setPage('gm'); return; }
+    setViewer({ role: 'team', companyId: val });
+    if (page === 'gm' || page === 'players') setPage('overview');
+  };
 
   const nav = viewer.role === 'gm' ? GM_NAV : TEAM_NAV;
   const scored = isScored(game, game.round);
@@ -139,7 +109,7 @@ export default function App() {
   const submittedCount = game.companies.filter((c) => c.isBot || game.decisions[c.id]?.submitted || c.status === 'bankrupt').length;
 
   let body: ReactElement;
-  const teamOnly = (el: ReactElement) => (ctx.company ? el : <GameMaster />);
+  const teamOnly = (el: ReactElement) => (ctx.company ? el : <GameMaster tab="rounds" />);
   switch (page) {
     case 'overview': body = teamOnly(<Overview />); break;
     case 'intelligence': body = teamOnly(<Intelligence />); break;
@@ -153,7 +123,8 @@ export default function App() {
     case 'finance': body = teamOnly(<Finance />); break;
     case 'leaderboard': body = <Leaderboard />; break;
     case 'history': body = teamOnly(<History />); break;
-    default: body = <GameMaster />;
+    case 'players': body = <GameMaster key="players" tab="players" />; break;
+    default: body = <GameMaster key="rounds" tab="rounds" />;
   }
 
   return (
@@ -173,8 +144,8 @@ export default function App() {
           ))}
           <div className="nav-group">Account</div>
           <nav className="nav">
-            <button onClick={() => setGameState(null)}>Back to games</button>
-            <button onClick={() => { setGameState(null); setCls(null); }}>All classes</button>
+            {!game.solo && <button onClick={() => setGameState(null)}>Back to games</button>}
+            <button onClick={() => { setGameState(null); setCls(null); }}>{game.solo ? 'Back to home' : 'All classes'}</button>
             <button onClick={signOut}>Sign out ({user.username})</button>
           </nav>
         </aside>
@@ -188,18 +159,26 @@ export default function App() {
               <span className="small muted">Submitted {submittedCount}/{game.companies.length}</span>
               {game.round <= totalRounds(game) && game.activeEvents.length > 0 && <Badge tone="warn">{game.activeEvents.length} active event{game.activeEvents.length > 1 ? 's' : ''}</Badge>}
             </div>
-            <label className="row small">
-              <span className="muted">Viewing as</span>
-              <select id="viewer-select" value={viewer.role === 'gm' ? 'gm' : viewer.companyId} onChange={(e) => switchViewer(e.target.value)} style={{ width: 'auto' }}>
-                {isAdmin && <option value="gm">Game Master</option>}
-                {game.companies.filter((c) => isAdmin || !c.isBot).map((c) => <option key={c.id} value={c.id}>{c.isBot ? 'Bot' : 'Team'} · {c.name}</option>)}
-              </select>
-            </label>
+            {isAdmin ? (
+              <label className="row small">
+                <span className="muted">Viewing as</span>
+                <select id="viewer-select" value={viewer.role === 'gm' ? 'gm' : viewer.companyId} onChange={(e) => switchViewer(e.target.value)} style={{ width: 'auto' }}>
+                  <option value="gm">Game Master</option>
+                  {game.companies.map((c) => <option key={c.id} value={c.id}>{c.isBot ? 'Bot' : 'Team'} · {c.name}</option>)}
+                </select>
+              </label>
+            ) : (
+              <div className="row small">
+                <span>{ctx.company?.name}</span>
+                {game.solo && <Badge>{`${game.botLevel ?? 'normal'} bots`}</Badge>}
+              </div>
+            )}
           </header>
-          <main className="content">{body}</main>
+          <main className="content">
+            {body}
+          </main>
         </div>
       </div>
-      {pinModal}
     </Ctx.Provider>
   );
 }

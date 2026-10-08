@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react';
 import type { CompanyState, Decision, GameState } from '../engine/types';
+import type { User } from './auth';
 
 export type Viewer = { role: 'team'; companyId: string } | { role: 'gm' };
 
@@ -11,6 +12,7 @@ export interface GameCtx {
   decision: Decision | null;
   update: (fn: (d: Decision) => void) => void;
   readOnly: boolean;
+  user: User;
   go: (page: string) => void;
 }
 

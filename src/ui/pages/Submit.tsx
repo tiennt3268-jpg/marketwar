@@ -3,6 +3,7 @@ import { Badge, Card } from '../components';
 import { estimateSpend, latestVersion, sanitizeDecision, validateDecision } from '../../engine/decisions';
 import { sameFormula } from '../../engine/product';
 import { MODE_RULES } from '../../engine/scenario';
+import { processRound } from '../../engine/engine';
 import { COUNTRIES } from '../../engine/types';
 import { fmtK, fmtNum, sum } from '../../engine/util';
 
@@ -36,10 +37,15 @@ export default function Submit() {
 
   const submit = () => {
     const next = { ...clean, submitted: true, revision: d.revision + 1 };
-    setGame({
+    const g = {
       ...game, decisions: { ...game.decisions, [co.id]: next },
       audit: [...game.audit, { at: new Date().toISOString(), round: game.round, actor: co.name, event: 'SUBMIT', detail: `revision ${next.revision}` }],
-    });
+    };
+    if (game.solo) {
+      const out = processRound(g).game;
+      setGame(out);
+      go('reports');
+    } else setGame(g);
   };
   const amend = () => {
     setGame({
@@ -78,7 +84,7 @@ export default function Submit() {
             {game.phase !== 'OPEN' ? <p className="muted">Round locked</p> : co.isBot ? <p className="muted">Bot team</p> : d.submitted ? (
               <button className="btn" onClick={amend}>Withdraw to edit</button>
             ) : (
-              <button className="btn primary" disabled={errors.length > 0 || readOnly} onClick={submit}>Submit round {game.round}</button>
+              <button className="btn primary" disabled={errors.length > 0 || readOnly} onClick={submit}>{game.solo ? `Submit & run round ${game.round}` : `Submit round ${game.round}`}</button>
             )}
           </Card>
         </div>

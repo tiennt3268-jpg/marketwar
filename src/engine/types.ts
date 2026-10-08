@@ -498,6 +498,10 @@ export interface RoundResult {
 
 export type Phase = 'SETUP' | 'OPEN' | 'LOCKED' | 'PROCESSING' | 'PUBLISHED' | 'FINISHED';
 
+/** A student account that runs exactly one company. */
+export interface GameMember { username: string; companyId: string; addedAt: string }
+export type BotLevel = 'easy' | 'normal' | 'hard';
+
 export interface AuditEntry { at: string; round: number; actor: string; event: string; detail: string }
 
 export interface GameState {
@@ -518,5 +522,8 @@ export interface GameState {
   audit: AuditEntry[];
   owner?: string; // account that created the game
   classId?: string; // class (cohort) the game belongs to
+  members?: GameMember[]; // student accounts added by the Game Master (one per company)
+  botLevel?: BotLevel; // bot difficulty
+  solo?: boolean; // single-player game against bots
   pins?: Record<string, string>; // optional hot-seat team PINs (local play only)
 }

@@ -1,16 +1,16 @@
 import { useState } from 'react';
 import { createGame, type TeamConfig } from '../../engine/engine';
-import { BOT_PROFILES, BOT_STRATEGIES } from '../../engine/bots';
+import { BOT_LEVELS, BOT_PROFILES, BOT_STRATEGIES } from '../../engine/bots';
 import { defaultScenario } from '../../engine/scenario';
-import type { BotStrategy, GameState } from '../../engine/types';
+import type { BotLevel, BotStrategy, GameState } from '../../engine/types';
 import type { User } from '../auth';
 import { deleteGame, listSaved, loadGame, type ClassInfo } from '../store';
-import { Badge, Card, Empty, NumField } from '../components';
+import { Badge, Card, Empty, NumField, SelectField } from '../components';
 
 const COLORS = ['#1f8f4e', '#2b6cb0', '#d97706', '#7c3aed', '#db2777', '#0d9488', '#b45309', '#4b5563'];
 const DEFAULT_NAMES = ['Saigon Brew', 'Hanoi Roasters', 'Mekong Coffee', 'Dalat Highlands', 'Hue Heritage', 'Da Nang Drip', 'Can Tho Cafe', 'Ha Long Beans'];
 
-interface TeamRow extends TeamConfig { pin: string }
+type TeamRow = TeamConfig;
 
 export default function Home({ user, cls, onOpen, onBack, onSignOut }: { user: User; cls: ClassInfo; onOpen: (g: GameState) => void; onBack: () => void; onSignOut: () => void }) {
   const isAdmin = user.role === 'admin';
@@ -18,13 +18,15 @@ export default function Home({ user, cls, onOpen, onBack, onSignOut }: { user: U
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 1_000_000));
   const [practice, setPractice] = useState(2);
   const [scored, setScored] = useState(8);
+  const [level, setLevel] = useState<BotLevel>('normal');
   const [teams, setTeams] = useState<TeamRow[]>([
-    { name: DEFAULT_NAMES[0], color: COLORS[0], isBot: false, pin: '' },
-    { name: DEFAULT_NAMES[1], color: COLORS[1], isBot: true, botStrategy: 'price_leader', pin: '' },
-    { name: DEFAULT_NAMES[2], color: COLORS[2], isBot: true, botStrategy: 'quality_differentiator', pin: '' },
-    { name: DEFAULT_NAMES[3], color: COLORS[3], isBot: true, botStrategy: 'export_first', pin: '' },
+    { name: DEFAULT_NAMES[0], color: COLORS[0], isBot: false},
+    { name: DEFAULT_NAMES[1], color: COLORS[1], isBot: true, botStrategy: 'price_leader'},
+    { name: DEFAULT_NAMES[2], color: COLORS[2], isBot: true, botStrategy: 'quality_differentiator'},
+    { name: DEFAULT_NAMES[3], color: COLORS[3], isBot: true, botStrategy: 'export_first'},
   ]);
-  const [saved, setSaved] = useState(() => listSaved(cls.id));
+  const visible = () => listSaved(cls.id).filter((g) => isAdmin || g.members?.includes(user.username));
+  const [saved, setSaved] = useState(visible);
   const [importError, setImportError] = useState('');
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
 
@@ -34,10 +36,9 @@ export default function Home({ user, cls, onOpen, onBack, onSignOut }: { user: U
     const sc = defaultScenario();
     sc.practiceRounds = practice;
     sc.scoredRounds = scored;
-    const g = createGame({ name, seed, teams: teams.map(({ pin: _p, ...t }) => t), scenario: sc, id: `G-${seed}-${Date.now().toString(36)}` });
-    const pins: Record<string, string> = {};
-    teams.forEach((t, i) => { if (t.pin && !t.isBot) pins[g.companies[i].id] = t.pin; });
-    g.pins = pins;
+    const g = createGame({ name, seed, teams, scenario: sc, id: `G-${seed}-${Date.now().toString(36)}` });
+    g.members = [];
+    g.botLevel = level;
     g.owner = user.username;
     g.classId = cls.id;
     onOpen(g);
@@ -55,7 +56,7 @@ export default function Home({ user, cls, onOpen, onBack, onSignOut }: { user: U
 
   const gamesCard = (
     <Card title="Games">
-      {saved.length === 0 ? <Empty>No games in this class.</Empty> : (
+      {saved.length === 0 ? <Empty>{isAdmin ? 'No games in this class.' : 'You have not been added to a game in this class.'}</Empty> : (
         <div className="stack">
           {saved.map((s) => (
             <div key={s.id} className="game-item">
@@ -67,7 +68,7 @@ export default function Home({ user, cls, onOpen, onBack, onSignOut }: { user: U
                 <Badge tone={s.phase === 'FINISHED' ? 'warn' : 'good'}>{s.phase}</Badge>
                 <button className="btn sm primary" onClick={() => { const g = loadGame(s.id); if (g) onOpen(g); }}>Open</button>
                 {isAdmin && (confirmDel === s.id
-                  ? <button className="btn sm danger" onClick={() => { deleteGame(s.id); setSaved(listSaved(cls.id)); setConfirmDel(null); }}>Confirm delete</button>
+                  ? <button className="btn sm danger" onClick={() => { deleteGame(s.id); setSaved(visible()); setConfirmDel(null); }}>Confirm delete</button>
                   : <button className="btn sm ghost" onClick={() => setConfirmDel(s.id)}>Delete</button>)}
               </div>
             </div>
@@ -107,6 +108,7 @@ export default function Home({ user, cls, onOpen, onBack, onSignOut }: { user: U
                 <NumField label="Seed" value={seed} step={1} onChange={(v) => setSeed(Math.floor(v))} />
                 <NumField label="Practice rounds" value={practice} step={1} min={0} max={2} onChange={(v) => setPractice(Math.floor(v))} />
                 <NumField label="Scored rounds" value={scored} step={1} min={3} max={12} onChange={(v) => setScored(Math.floor(v))} />
+                <SelectField<BotLevel> label="Bot difficulty" value={level} onChange={setLevel} options={(Object.keys(BOT_LEVELS) as BotLevel[]).map((l) => ({ value: l, label: BOT_LEVELS[l].label }))} />
               </div>
               <h4 style={{ marginTop: 8 }}>Teams (2–8)</h4>
               {teams.map((t, i) => (
@@ -114,19 +116,19 @@ export default function Home({ user, cls, onOpen, onBack, onSignOut }: { user: U
                   <input type="color" className="color-swatch" value={t.color} onChange={(e) => setTeam(i, { color: e.target.value })} aria-label="Team color" />
                   <input id={`team-name-${i}`} type="text" value={t.name} onChange={(e) => setTeam(i, { name: e.target.value })} aria-label="Team name" />
                   <select id={`team-type-${i}`} value={t.isBot ? 'bot' : 'human'} onChange={(e) => setTeam(i, { isBot: e.target.value === 'bot', botStrategy: e.target.value === 'bot' ? t.botStrategy ?? 'export_first' : undefined })} aria-label="Team type">
-                    <option value="human">Human</option>
+                    <option value="human">Student</option>
                     <option value="bot">Bot</option>
                   </select>
                   {t.isBot ? (
                     <select id={`team-bot-${i}`} value={t.botStrategy} onChange={(e) => setTeam(i, { botStrategy: e.target.value as BotStrategy })} aria-label="Bot strategy">
                       {BOT_STRATEGIES.map((s) => <option key={s} value={s}>{BOT_PROFILES[s].label}</option>)}
                     </select>
-                  ) : <input id={`team-pin-${i}`} type="password" placeholder="PIN (optional)" value={t.pin} onChange={(e) => setTeam(i, { pin: e.target.value })} aria-label="PIN" />}
+                  ) : <span className="small muted">Student account</span>}
                   <button className="btn sm ghost" disabled={teams.length <= 2} onClick={() => setTeams(teams.filter((_, j) => j !== i))}>Remove</button>
                 </div>
               ))}
               <div className="row">
-                <button className="btn sm" disabled={teams.length >= 8} onClick={() => setTeams([...teams, { name: DEFAULT_NAMES[teams.length] ?? `Team ${teams.length + 1}`, color: COLORS[teams.length % COLORS.length], isBot: true, botStrategy: BOT_STRATEGIES[teams.length % BOT_STRATEGIES.length], pin: '' }])}>Add team</button>
+                <button className="btn sm" disabled={teams.length >= 8} onClick={() => setTeams([...teams, { name: DEFAULT_NAMES[teams.length] ?? `Team ${teams.length + 1}`, color: COLORS[teams.length % COLORS.length], isBot: true, botStrategy: BOT_STRATEGIES[teams.length % BOT_STRATEGIES.length]}])}>Add team</button>
               </div>
               <button className="btn primary" onClick={start} disabled={teams.length < 2 || teams.some((t) => !t.name.trim())}>Start game</button>
             </div>

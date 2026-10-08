@@ -4,7 +4,7 @@ import { carryForward, currentVersion, validateDecision, vnAvailableBySku } from
 import { FORMULA_PRESETS } from './product';
 import { MODE_RULES } from './scenario';
 import type {
-  BotStrategy, CompanyState, CountryCode, Decision, EntryMode, EntryScale, Formula, GameState, MessageTheme, SegmentId, ShipmentDecision,
+  BotLevel, BotStrategy, CompanyState, CountryCode, Decision, EntryMode, EntryScale, Formula, GameState, MessageTheme, SegmentId, ShipmentDecision,
 } from './types';
 import { AD_CHANNELS, COUNTRIES } from './types';
 import { sum } from './util';
@@ -71,6 +71,23 @@ export const BOT_PROFILES: Record<BotStrategy, BotProfile> = {
 
 export const BOT_STRATEGIES = Object.keys(BOT_PROFILES) as BotStrategy[];
 
+/** Difficulty only changes how well bots play; every company still starts from the same template. */
+export const BOT_LEVELS: Record<BotLevel, { label: string; spend: number; supply: number; budgets: number; adaptivePricing: boolean; capex: 'none' | 'plan' | 'aggressive' }> = {
+  easy: { label: 'Easy', spend: 0.55, supply: 0.7, budgets: 0.6, adaptivePricing: false, capex: 'none' },
+  normal: { label: 'Normal', spend: 1, supply: 1, budgets: 1, adaptivePricing: true, capex: 'plan' },
+  hard: { label: 'Hard', spend: 1.25, supply: 1.25, budgets: 1.3, adaptivePricing: true, capex: 'aggressive' },
+};
+
+/** Default bot line-up for a difficulty level. */
+export function botLineup(level: BotLevel, count: number): BotStrategy[] {
+  const pool: Record<BotLevel, BotStrategy[]> = {
+    easy: ['conservative', 'focused_niche', 'jv_diversifier', 'conservative', 'focused_niche', 'jv_diversifier', 'conservative'],
+    normal: ['price_leader', 'quality_differentiator', 'export_first', 'focused_niche', 'jv_diversifier', 'conservative', 'price_leader'],
+    hard: ['export_first', 'quality_differentiator', 'price_leader', 'export_first', 'quality_differentiator', 'price_leader', 'export_first'],
+  };
+  return pool[level].slice(0, count);
+}
+
 /** Rounds relative to the scored game: bots restart their plan after practice reset. */
 function planRound(game: GameState): number {
   const pr = game.scenario.practiceRounds;
@@ -79,6 +96,7 @@ function planRound(game: GameState): number {
 
 export function makeBotDecision(game: GameState, co: CompanyState): Decision {
   const prof = BOT_PROFILES[co.botStrategy ?? 'export_first'];
+  const lv = BOT_LEVELS[game.botLevel ?? 'normal'];
   const sc = game.scenario;
   const r = planRound(game);
   const d = carryForward(game.decisions[co.id], co, sc, game.round);
@@ -89,13 +107,16 @@ export function makeBotDecision(game: GameState, co: CompanyState): Decision {
     if (p.needsFreeze && !co.hasFreezeTech) continue;
     if (!d.skus.find((s) => s.skuId === p.id)) d.skus.push({ skuId: p.id, name: p.name, formula: { ...(FORMULA_PRESETS[p.preset] as Formula) } });
   }
-  d.rdBudget = prof.rd;
-  d.innovationBudget = co.hasFreezeTech ? 0 : prof.innovation;
-  d.qualityBudget = prof.quality;
+  d.rdBudget = Math.round(prof.rd * lv.budgets);
+  d.innovationBudget = co.hasFreezeTech ? 0 : Math.round(prof.innovation * lv.budgets);
+  d.qualityBudget = Math.round(prof.quality * lv.budgets);
   d.maintenanceBudget = 25_000;
   const lastTotDemand = sum((lastRes?.countryResults ?? []).filter((x) => x.companyId === co.id).map((x) => x.demandBoxes));
   const expanding = co.capacityProjects.length > 0;
-  d.capacityCapex = (prof.capexRounds.includes(r) || (lastTotDemand > co.vnCapacity * 1.3 && !expanding && prof.capexRounds.length > 0)) && co.ledger.cash > 1_500_000 ? 500_000 : 0;
+  const wantCapex = lv.capex === 'none' ? false
+    : lv.capex === 'aggressive' ? lastTotDemand > co.vnCapacity * 1.1 && !expanding
+    : prof.capexRounds.includes(r) || (lastTotDemand > co.vnCapacity * 1.3 && !expanding && prof.capexRounds.length > 0);
+  d.capacityCapex = wantCapex && co.ledger.cash > 1_500_000 ? 500_000 : 0;
 
   // Entries
   for (const e of prof.entries) {
@@ -129,10 +150,10 @@ export function makeBotDecision(game: GameState, co: CompanyState): Decision {
     cd.creditDays = 30;
     cd.serviceBudget = 15_000;
     cd.localizationBudget = 20_000;
-    cd.tradeSpend = prof.tradeSpend;
+    cd.tradeSpend = Math.round(prof.tradeSpend * lv.spend);
     const ranked = [...AD_CHANNELS].sort((a, b) => env.channelEffect[b] - env.channelEffect[a]).slice(0, 3);
     const ads = { search: 0, social: 0, video: 0, influencer: 0, offline: 0 };
-    ranked.forEach((ch, i) => (ads[ch] = Math.round(prof.adPerCountry * [0.45, 0.35, 0.2][i])));
+    ranked.forEach((ch, i) => (ads[ch] = Math.round(prof.adPerCountry * lv.spend * [0.45, 0.35, 0.2][i])));
     cd.ads = ads;
     for (const s of co.skus.concat(d.skus.filter((x) => !co.skus.find((y) => y.id === x.skuId)).map((x) => ({ id: x.skuId, name: x.name, versions: [], retired: false })))) {
       const isPremiumSku = s.id === 'SKU-Q2' || s.id === 'SKU-Q1' || s.id === 'SKU-H1';
@@ -141,7 +162,7 @@ export function makeBotDecision(game: GameState, co: CompanyState): Decision {
       const prevPrice = game.decisions[co.id]?.countries[c]?.prices[s.id];
       const res = lastRes?.countryResults.find((x) => x.companyId === co.id && x.country === c);
       let price = seg.referencePrice * prof.priceFactor;
-      if (prevPrice && res && p.status === 'active') {
+      if (lv.adaptivePricing && prevPrice && res && p.status === 'active') {
         const fill = res.demandBoxes > 0 ? res.salesBoxes / res.demandBoxes : 1;
         price = prevPrice * (fill < 0.75 ? 1.06 : fill > 0.98 ? 0.98 : 1);
         price = Math.min(Math.max(price, seg.referencePrice * prof.priceFactor * 0.85), seg.referencePrice * prof.priceFactor * 1.35);
@@ -173,7 +194,7 @@ export function makeBotDecision(game: GameState, co: CompanyState): Decision {
   const need: Record<string, number> = {};
   const ships: ShipmentDecision[] = [];
   for (const c of exportCountries) {
-    const target = Math.max(60_000, Math.round(Math.max(lastSales(c) * 1.2, lastDemand(c) * 1.05)));
+    const target = Math.round(Math.max(60_000, Math.max(lastSales(c) * 1.2, lastDemand(c) * 1.05)) * lv.supply);
     const local = sum(co.inventory.filter((l) => l.location === c).map((l) => l.qty));
     const transit = sum(co.shipments.filter((s) => s.country === c && (s.status === 'in_transit' || s.status === 'detained')).flatMap((s) => s.lines.map((l) => l.qty)));
     const gap = Math.max(0, target - local - transit);

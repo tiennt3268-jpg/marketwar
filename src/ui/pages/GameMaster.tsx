@@ -6,12 +6,14 @@ import { VARIABLE_REGISTRY, validateEventTemplate } from '../../engine/events';
 import { COUNTRIES, type CountryCode, type EventEffect, type EventTemplate, type GameState } from '../../engine/types';
 import { deepClone, fmtK, fmtNum } from '../../engine/util';
 import { downloadText } from '../store';
+import { assignAccount, companyOwner, memberCompany, unassignAccount } from '../../engine/members';
+import { getAccount, listAccounts } from '../auth';
 
-type Tab = 'rounds' | 'scenario' | 'events' | 'grading';
+type Tab = 'rounds' | 'players' | 'scenario' | 'events' | 'grading';
 
-export default function GameMaster() {
+export default function GameMaster({ tab: initialTab = 'rounds' }: { tab?: Tab }) {
   const { game, setGame } = useGame();
-  const [tab, setTab] = useState<Tab>('rounds');
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [lastInput, setLastInput] = useState<GameState | null>(null);
@@ -52,7 +54,7 @@ export default function GameMaster() {
       <div className="section-title"><h1>Game Master</h1>
         <button className="btn sm" onClick={() => downloadText(`${game.name.replace(/\W+/g, '_')}-R${game.round}.json`, JSON.stringify(game))}>Export save</button>
       </div>
-      <Tabs value={tab} onChange={setTab} items={[{ value: 'rounds', label: 'Rounds' }, { value: 'scenario', label: 'Country parameters' }, { value: 'events', label: 'Events' }, { value: 'grading', label: 'Grading' }]} />
+      <Tabs value={tab} onChange={setTab} items={[{ value: 'rounds', label: 'Rounds' }, { value: 'players', label: 'Players & companies' }, { value: 'scenario', label: 'Country parameters' }, { value: 'events', label: 'Events' }, { value: 'grading', label: 'Grading' }]} />
 
       {tab === 'rounds' && (
         <div className="grid g2" style={{ alignItems: 'start' }}>
@@ -98,6 +100,7 @@ export default function GameMaster() {
       {tab === 'scenario' && <ScenarioEditor setGame={(g, msg) => setGame(audit(g, 'SCENARIO_EDIT', msg))} />}
       {tab === 'events' && <EventsEditor setGame={(g, msg) => setGame(audit(g, 'EVENT_EDIT', msg))} />}
       {tab === 'grading' && <Grading />}
+      {tab === 'players' && <Players />}
     </div>
   );
 }
@@ -245,6 +248,91 @@ function Grading() {
           </Card>
         );
       })}
+    </div>
+  );
+}
+
+function Players() {
+  const { game, setGame } = useGame();
+  const [query, setQuery] = useState('');
+  const [error, setError] = useState('');
+  const accounts = listAccounts();
+  const humans = game.companies.filter((c) => !c.isBot);
+  const q = query.trim().toLowerCase();
+  const shown = accounts.filter((a) => !q || `${a.username} ${a.profile.fullName} ${a.profile.studentId} ${a.profile.email} ${a.profile.cohort}`.toLowerCase().includes(q));
+  const apply = (fn: () => GameState, detail: string) => {
+    setError('');
+    try {
+      const g = fn();
+      setGame({ ...g, audit: [...g.audit, { at: new Date().toISOString(), round: g.round, actor: 'GM', event: 'ACCOUNTS', detail }] });
+    } catch (e) { setError((e as Error).message); }
+  };
+  const label = (u: string) => { const a = getAccount(u); return a ? `${a.profile.fullName || a.username} (${a.username})` : u; };
+
+  return (
+    <div className="stack">
+      {error && <div className="alert bad small">{error}</div>}
+      <Card title="Companies">
+        {humans.length === 0 ? <p className="muted small">This game has no student companies.</p> : (
+          <div className="table-wrap"><table>
+            <thead><tr><th>Company</th><th>Account</th><th>Student ID</th><th>Email</th><th>Class</th></tr></thead>
+            <tbody>{humans.map((c) => {
+              const owner = companyOwner(game, c.id);
+              const acc = owner ? getAccount(owner) : null;
+              return (
+                <tr key={c.id}>
+                  <td><span className="inline"><i className="dot" style={{ background: c.color }} />{c.name}</span></td>
+                  <td>
+                    <select id={`owner-${c.id}`} value={owner ?? ''} style={{ width: 'auto', minWidth: 200 }} onChange={(e) => {
+                      const v = e.target.value;
+                      apply(() => {
+                        let g = owner ? unassignAccount(game, owner) : game;
+                        if (v) g = assignAccount(g, v, c.id);
+                        return g;
+                      }, `${c.id} → ${v || 'none'}`);
+                    }}>
+                      <option value="">Unassigned</option>
+                      {accounts.filter((a) => a.username === owner || !memberCompany(game, a.username)).map((a) => <option key={a.username} value={a.username}>{label(a.username)}</option>)}
+                    </select>
+                  </td>
+                  <td>{acc?.profile.studentId || '—'}</td>
+                  <td>{acc?.profile.email || '—'}</td>
+                  <td>{acc?.profile.cohort || '—'}</td>
+                </tr>
+              );
+            })}</tbody>
+          </table></div>
+        )}
+      </Card>
+      <Card title={`Registered students (${accounts.length})`} actions={<input id="player-search" type="text" placeholder="Search" value={query} onChange={(e) => setQuery(e.target.value)} style={{ width: 200 }} />}>
+        {shown.length === 0 ? <p className="muted small">No student accounts.</p> : (
+          <div className="table-wrap"><table>
+            <thead><tr><th>Name</th><th>Username</th><th>Student ID</th><th>Email</th><th>Class</th><th>Registered</th><th>Company</th></tr></thead>
+            <tbody>{shown.map((a) => {
+              const cid = memberCompany(game, a.username);
+              return (
+                <tr key={a.username}>
+                  <td><b>{a.profile.fullName || '—'}</b></td>
+                  <td>{a.username}</td>
+                  <td>{a.profile.studentId || '—'}</td>
+                  <td>{a.profile.email || '—'}</td>
+                  <td>{a.profile.cohort || '—'}</td>
+                  <td>{new Date(a.createdAt).toLocaleDateString('en-GB')}</td>
+                  <td>
+                    <select id={`assign-${a.username}`} value={cid ?? ''} style={{ width: 'auto' }} onChange={(e) => {
+                      const v = e.target.value;
+                      apply(() => (v ? assignAccount(game, a.username, v) : unassignAccount(game, a.username)), `${a.username} → ${v || 'none'}`);
+                    }}>
+                      <option value="">Not in game</option>
+                      {humans.map((c) => { const o = companyOwner(game, c.id); return <option key={c.id} value={c.id} disabled={!!o && o !== a.username}>{c.name}{o && o !== a.username ? ' (taken)' : ''}</option>; })}
+                    </select>
+                  </td>
+                </tr>
+              );
+            })}</tbody>
+          </table></div>
+        )}
+      </Card>
     </div>
   );
 }

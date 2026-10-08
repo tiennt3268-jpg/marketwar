@@ -250,3 +250,11 @@ tbody tr:hover td { background: #fafcfb; }
   .class-open { grid-template-columns: 1fr; }
   .class-open .class-code { grid-row: auto; justify-self: start; }
 }
+
+/* bot difficulty picker */
+.level-picker { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.level { padding: 10px 8px; border: 1px solid var(--line-strong); border-top-width: 3px; border-radius: var(--radius); background: #ffffff; font-weight: 700; cursor: pointer; color: var(--text); }
+.level-easy { border-top-color: var(--c-green); } .level-normal { border-top-color: var(--c-amber); } .level-hard { border-top-color: var(--bad); }
+.level-easy.selected { background: var(--c-green-bg); color: var(--c-green); border-color: var(--c-green); }
+.level-normal.selected { background: var(--c-amber-bg); color: #b45309; border-color: var(--c-amber); }
+.level-hard.selected { background: #fdecea; color: var(--bad); border-color: var(--bad); }

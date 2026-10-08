@@ -6,8 +6,10 @@ const ACCOUNTS_KEY = 'marketwars:accounts';
 const SESSION_KEY = 'marketwars:session';
 
 export type Role = 'admin' | 'player';
-interface Account { salt: string; hash: string; createdAt: string; role?: Role }
-export interface User { username: string; role: Role }
+export interface Profile { fullName: string; studentId: string; email: string; cohort: string }
+interface Account { salt: string; hash: string; createdAt: string; role?: Role; profile?: Profile }
+export interface User { username: string; role: Role; profile: Profile; createdAt: string }
+const EMPTY_PROFILE: Profile = { fullName: '', studentId: '', email: '', cohort: '' };
 
 // Built-in Game Master account. Only the salted hash is shipped, never the password.
 const ADMINS: Record<string, Account> = {
@@ -16,6 +18,7 @@ const ADMINS: Record<string, Account> = {
     hash: '0300d5bd66b0178abcbf2cc963b56b005a25e7cf80e0e2b1f249ca0543146f0a',
     createdAt: '2026-10-08T00:00:00.000Z',
     role: 'admin',
+    profile: { fullName: 'Game Master', studentId: '', email: '', cohort: '' },
   },
 };
 
@@ -58,7 +61,7 @@ function newSalt(): string {
 }
 
 const normalise = (u: string) => u.trim().toLowerCase();
-const toUser = (name: string, acc: Account): User => ({ username: name, role: acc.role ?? 'player' });
+const toUser = (name: string, acc: Account): User => ({ username: name, role: acc.role ?? 'player', profile: { ...EMPTY_PROFILE, ...acc.profile }, createdAt: acc.createdAt });
 
 export function validateUsername(u: string): string | null {
   const n = normalise(u);
@@ -67,15 +70,24 @@ export function validateUsername(u: string): string | null {
   return null;
 }
 
-export async function register(username: string, password: string): Promise<User> {
-  const err = validateUsername(username);
+export function validateProfile(p: Profile): string | null {
+  if (p.fullName.trim().length < 2) return 'Enter your full name';
+  if (!p.studentId.trim()) return 'Enter your student ID';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email.trim())) return 'Enter a valid email';
+  return null;
+}
+
+export async function register(username: string, password: string, profile: Profile): Promise<User> {
+  const err = validateUsername(username) ?? validateProfile(profile);
   if (err) throw new Error(err);
   if (password.length < 6) throw new Error('Password must be at least 6 characters');
   const n = normalise(username);
   const accounts = readAccounts();
   if (accounts[n]) throw new Error('This username is already taken');
   const salt = newSalt();
-  accounts[n] = { salt, hash: await digest(password, salt), createdAt: new Date().toISOString(), role: 'player' };
+  const clean: Profile = { fullName: profile.fullName.trim(), studentId: profile.studentId.trim(), email: profile.email.trim().toLowerCase(), cohort: profile.cohort.trim() };
+  if (Object.values(accounts).some((a) => a.profile?.studentId && a.profile.studentId === clean.studentId)) throw new Error('This student ID is already registered');
+  accounts[n] = { salt, hash: await digest(password, salt), createdAt: new Date().toISOString(), role: 'player', profile: clean };
   writeAccounts(accounts);
   setSession(n);
   return toUser(n, accounts[n]);
@@ -108,3 +120,26 @@ export function currentUser(): User | null {
 export function logout() {
   setSession(null);
 }
+
+/** Registered student accounts (no password data). */
+export function listAccounts(): User[] {
+  return Object.entries(readAccounts()).filter(([, a]) => (a.role ?? 'player') === 'player').map(([n, a]) => toUser(n, a))
+    .sort((a, b) => a.profile.fullName.localeCompare(b.profile.fullName) || a.username.localeCompare(b.username));
+}
+
+export function getAccount(username: string): User | null {
+  const a = readAccounts()[username];
+  return a ? toUser(username, a) : null;
+}
+
+export async function updateProfile(username: string, profile: Profile): Promise<User> {
+  const err = validateProfile(profile);
+  if (err) throw new Error(err);
+  const accounts = readAccounts();
+  if (!accounts[username] || ADMINS[username]) throw new Error('Account not found');
+  accounts[username] = { ...accounts[username], profile: { fullName: profile.fullName.trim(), studentId: profile.studentId.trim(), email: profile.email.trim().toLowerCase(), cohort: profile.cohort.trim() } };
+  writeAccounts(accounts);
+  return toUser(username, accounts[username]);
+}
+
+export const displayName = (username: string) => getAccount(username)?.profile.fullName || username;

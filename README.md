@@ -16,8 +16,9 @@ SINGLE=1 npx vite build   # gói toàn bộ game thành một file HTML duy nh�
 
 ## Cách chơi (hot-seat, nhiều đội trên một máy)
 
-0. Đăng nhập. Tài khoản Game Master (admin) `tiennt` được cấu hình sẵn trong `src/ui/auth.ts` (chỉ lưu salt + SHA-256 hash, không lưu mật khẩu). Người chơi tự tạo tài khoản (role player, lưu cục bộ trong trình duyệt).
-1. Game Master tạo **lớp** (tên, mã lớp, học kỳ) ở màn hình Classes, chọn lớp rồi tạo game trong lớp đó. Người chơi chọn lớp → game → đội (nhập PIN nếu có); người chơi không thấy chế độ Game Master và dữ liệu nội bộ của bot.
+0. Đăng nhập. Tài khoản Game Master (admin) `tiennt` được cấu hình sẵn trong `src/ui/auth.ts` (chỉ lưu salt + SHA-256 hash, không lưu mật khẩu). Sinh viên tự đăng ký tài khoản kèm hồ sơ (họ tên, MSSV, email, lớp).
+1. Game Master tạo **lớp** (tên, mã lớp, học kỳ), tạo game trong lớp (chọn số công ty sinh viên/bot và độ khó bot), rồi vào tab **Players & companies** gán mỗi công ty cho đúng **một** tài khoản sinh viên. Sinh viên chỉ thấy lớp/game mình được gán và chỉ điều hành công ty của mình.
+   Sinh viên chưa được gán vào lớp có thể **Play vs bots** với 3 mức Easy / Normal / Hard (độ khó chỉ thay đổi cách bot ra quyết định; mọi công ty vẫn xuất phát giống nhau). Trong game đấu bot, nút *Submit & run round* tự xử lý vòng.
 1. Ở sảnh, tạo trò chơi: 2–8 đội, mỗi đội là **người chơi** (có thể đặt PIN) hoặc **bot** (6 chiến lược: price leader, quality differentiator, focused niche, export-first, JV diversifier, conservative).
 2. Mỗi đội chọn tên mình ở ô **Viewing as**, ra quyết định trên các trang: Market Intelligence → Product Lab → Strategy & Entry → Marketing & Pricing → Operations & Logistics → Finance & Risk → **Review & Submit**.
 3. Chọn **Game Master** → **Lock & process round**. Kết quả được công bố: thị phần, bản đồ định vị, báo cáo tài chính, bảng xếp hạng.
