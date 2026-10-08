@@ -108,15 +108,15 @@ export default function ProductLab() {
         <div className="stack">
           <Card title="Product attributes">
             <div className="stack">
-              <AttrRow label="Flavor strength" value={attrs.flavorStrength} />
-              <AttrRow label="Smoothness" value={attrs.smoothness} />
-              <AttrRow label="Sweetness" value={attrs.sweetness} />
-              <AttrRow label="Aroma" value={attrs.aroma} />
-              <AttrRow label="Healthiness" value={attrs.healthiness} />
-              <AttrRow label="Quality index" value={attrs.qualityIndex} />
-              <AttrRow label="Packaging" value={attrs.packagingScore} />
-              <AttrRow label="Sustainability" value={attrs.sustainability} />
-              <AttrRow label="Convenience" value={attrs.convenience} />
+              <AttrRow label="Flavor strength" color="#b45309" value={attrs.flavorStrength} />
+              <AttrRow label="Smoothness" color="#0d9488" value={attrs.smoothness} />
+              <AttrRow label="Sweetness" color="#db2777" value={attrs.sweetness} />
+              <AttrRow label="Aroma" color="#7c3aed" value={attrs.aroma} />
+              <AttrRow label="Healthiness" color="#16a34a" value={attrs.healthiness} />
+              <AttrRow label="Quality index" color="#1f8f4e" value={attrs.qualityIndex} />
+              <AttrRow label="Packaging" color="#2b6cb0" value={attrs.packagingScore} />
+              <AttrRow label="Sustainability" color="#65a30d" value={attrs.sustainability} />
+              <AttrRow label="Convenience" color="#d97706" value={attrs.convenience} />
             </div>
             <div className="grid g3" style={{ marginTop: 14 }}>
               <div className="stat"><span className="label">Unit cost</span><span className="value">{fmtUSD(attrs.unitCost, 2)}</span></div>

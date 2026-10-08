@@ -3,11 +3,12 @@ import type { Decision, GameState } from '../engine/types';
 import { carryForward } from '../engine/decisions';
 import { isScored, totalRounds } from '../engine/engine';
 import { Ctx, type GameCtx, type Viewer } from './context';
-import { saveGame } from './store';
-import { currentUser, logout } from './auth';
+import { saveGame, type ClassInfo } from './store';
+import { currentUser, logout, type User } from './auth';
 import { Badge } from './components';
 import Login from './pages/Login';
 import Home from './pages/Home';
+import Classes from './pages/Classes';
 import Overview from './pages/Overview';
 import Intelligence from './pages/Intelligence';
 import ProductLab from './pages/ProductLab';
@@ -37,11 +38,13 @@ const TEAM_NAV: { group: string; items: { id: string; label: string }[] }[] = [
 const GM_NAV = [{ group: 'Game Master', items: [{ id: 'gm', label: 'Round Control' }, { id: 'reports', label: 'Market Share & Positioning' }, { id: 'leaderboard', label: 'Leaderboard' }] }];
 
 export default function App() {
-  const [user, setUser] = useState<string | null>(() => currentUser());
+  const [user, setUser] = useState<User | null>(() => currentUser());
+  const [cls, setCls] = useState<ClassInfo | null>(null);
   const [game, setGameState] = useState<GameState | null>(null);
   const [viewer, setViewer] = useState<Viewer>({ role: 'gm' });
   const [page, setPage] = useState('overview');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [teamChosen, setTeamChosen] = useState(true);
   const [pinPrompt, setPinPrompt] = useState<{ companyId: string; value: string; error?: string } | null>(null);
 
   const setGame = useCallback((g: GameState) => {
@@ -51,12 +54,14 @@ export default function App() {
 
   const openGame = (g: GameState) => {
     setGameState(g);
+    if (user?.role === 'admin') { setViewer({ role: 'gm' }); setPage('gm'); return; }
     const firstHuman = g.companies.find((c) => !c.isBot && !g.pins?.[c.id]);
-    if (firstHuman) { setViewer({ role: 'team', companyId: firstHuman.id }); setPage('overview'); }
-    else { setViewer({ role: 'gm' }); setPage('gm'); }
+    if (firstHuman) { setViewer({ role: 'team', companyId: firstHuman.id }); setPage('overview'); setTeamChosen(true); }
+    else setTeamChosen(false);
   };
 
-  const signOut = () => { logout(); setGameState(null); setUser(null); };
+  const signOut = () => { logout(); setGameState(null); setCls(null); setUser(null); };
+  const isAdmin = user?.role === 'admin';
 
   const ctx: GameCtx | null = useMemo(() => {
     if (!game) return null;
@@ -77,14 +82,56 @@ export default function App() {
   }, [game, viewer, setGame]);
 
   if (!user) return <Login onLogin={setUser} />;
-  if (!game || !ctx) return <Home user={user} onOpen={openGame} onSignOut={signOut} />;
+  if (!cls && !game) return <Classes user={user} onSelect={setCls} onSignOut={signOut} />;
+  if (!game || !ctx) return <Home user={user} cls={cls!} onOpen={openGame} onBack={() => setCls(null)} onSignOut={signOut} />;
 
   const switchViewer = (val: string) => {
-    if (val === 'gm') { setViewer({ role: 'gm' }); setPage('gm'); return; }
-    if (game.pins?.[val]) { setPinPrompt({ companyId: val, value: '' }); return; }
+    if (val === 'gm') { if (!isAdmin) return; setViewer({ role: 'gm' }); setPage('gm'); return; }
+    if (game.pins?.[val] && !isAdmin) { setPinPrompt({ companyId: val, value: '' }); return; }
     setViewer({ role: 'team', companyId: val });
     if (page === 'gm') setPage('overview');
   };
+
+  const pinModal = pinPrompt && (
+    <div className="overlay" onClick={() => setPinPrompt(null)}>
+      <form className="modal stack" onClick={(e) => e.stopPropagation()} onSubmit={(e) => {
+        e.preventDefault();
+        if (game.pins?.[pinPrompt.companyId] === pinPrompt.value) { setViewer({ role: 'team', companyId: pinPrompt.companyId }); setPage(teamChosen && page !== 'gm' ? page : 'overview'); setTeamChosen(true); setPinPrompt(null); }
+        else setPinPrompt({ ...pinPrompt, error: 'Wrong PIN' });
+      }}>
+        <h3>Team PIN</h3>
+        <input id="pin-input" type="password" autoFocus value={pinPrompt.value} onChange={(e) => setPinPrompt({ ...pinPrompt, value: e.target.value })} />
+        {pinPrompt.error && <div className="bad small">{pinPrompt.error}</div>}
+        <div className="row"><button className="btn primary" type="submit">Open</button><button className="btn" type="button" onClick={() => setPinPrompt(null)}>Cancel</button></div>
+      </form>
+    </div>
+  );
+
+  if (!teamChosen && !isAdmin) {
+    const humans = game.companies.filter((c) => !c.isBot);
+    return (
+      <div className="hero">
+        <div className="spread" style={{ marginBottom: 24 }}>
+          <div className="row"><button className="btn sm" onClick={() => setGameState(null)}>Back to games</button><h1 style={{ margin: 0 }}>{game.name}</h1></div>
+        </div>
+        <div className="card">
+          <div className="card-head"><h3>Choose your team</h3></div>
+          <div className="class-list">
+            {humans.map((c) => (
+              <div key={c.id} className="class-item">
+                <button className="class-open" onClick={() => { if (game.pins?.[c.id]) setPinPrompt({ companyId: c.id, value: '' }); else { setViewer({ role: 'team', companyId: c.id }); setPage('overview'); setTeamChosen(true); } }}>
+                  <span className="class-code" style={{ background: c.color }}>{c.name.slice(0, 2).toUpperCase()}</span>
+                  <span className="class-name">{c.name}</span>
+                  <span className="small muted">{game.pins?.[c.id] ? 'PIN required' : 'Open'}</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+        {pinModal}
+      </div>
+    );
+  }
 
   const nav = viewer.role === 'gm' ? GM_NAV : TEAM_NAV;
   const scored = isScored(game, game.round);
@@ -126,8 +173,9 @@ export default function App() {
           ))}
           <div className="nav-group">Account</div>
           <nav className="nav">
-            <button onClick={() => setGameState(null)}>Back to lobby</button>
-            <button onClick={signOut}>Sign out ({user})</button>
+            <button onClick={() => setGameState(null)}>Back to games</button>
+            <button onClick={() => { setGameState(null); setCls(null); }}>All classes</button>
+            <button onClick={signOut}>Sign out ({user.username})</button>
           </nav>
         </aside>
         <div className="main" onClick={() => menuOpen && setMenuOpen(false)}>
@@ -143,28 +191,15 @@ export default function App() {
             <label className="row small">
               <span className="muted">Viewing as</span>
               <select id="viewer-select" value={viewer.role === 'gm' ? 'gm' : viewer.companyId} onChange={(e) => switchViewer(e.target.value)} style={{ width: 'auto' }}>
-                <option value="gm">Game Master</option>
-                {game.companies.map((c) => <option key={c.id} value={c.id}>{c.isBot ? 'Bot' : 'Team'} · {c.name}</option>)}
+                {isAdmin && <option value="gm">Game Master</option>}
+                {game.companies.filter((c) => isAdmin || !c.isBot).map((c) => <option key={c.id} value={c.id}>{c.isBot ? 'Bot' : 'Team'} · {c.name}</option>)}
               </select>
             </label>
           </header>
           <main className="content">{body}</main>
         </div>
       </div>
-      {pinPrompt && (
-        <div className="overlay" onClick={() => setPinPrompt(null)}>
-          <form className="modal stack" onClick={(e) => e.stopPropagation()} onSubmit={(e) => {
-            e.preventDefault();
-            if (game.pins?.[pinPrompt.companyId] === pinPrompt.value) { setViewer({ role: 'team', companyId: pinPrompt.companyId }); if (page === 'gm') setPage('overview'); setPinPrompt(null); }
-            else setPinPrompt({ ...pinPrompt, error: 'Wrong PIN' });
-          }}>
-            <h3>Team PIN</h3>
-            <input id="pin-input" type="password" autoFocus value={pinPrompt.value} onChange={(e) => setPinPrompt({ ...pinPrompt, value: e.target.value })} />
-            {pinPrompt.error && <div className="bad small">{pinPrompt.error}</div>}
-            <div className="row"><button className="btn primary" type="submit">Open</button><button className="btn" type="button" onClick={() => setPinPrompt(null)}>Cancel</button></div>
-          </form>
-        </div>
-      )}
+      {pinModal}
     </Ctx.Provider>
   );
 }

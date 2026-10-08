@@ -517,5 +517,6 @@ export interface GameState {
   results: RoundResult[];
   audit: AuditEntry[];
   owner?: string; // account that created the game
+  classId?: string; // class (cohort) the game belongs to
   pins?: Record<string, string>; // optional hot-seat team PINs (local play only)
 }

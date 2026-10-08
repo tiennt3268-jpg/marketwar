@@ -8,8 +8,8 @@ export function Card({ title, actions, children, className }: { title?: ReactNod
   return (
     <section className={`card ${className ?? ''}`}>
       {(title || actions) && (
-        <div className="spread" style={{ marginBottom: 10 }}>
-          {title ? <h3 style={{ margin: 0 }}>{title}</h3> : <span />}
+        <div className="card-head">
+          {title ? <h3>{title}</h3> : <span />}
           {actions}
         </div>
       )}
@@ -18,9 +18,9 @@ export function Card({ title, actions, children, className }: { title?: ReactNod
   );
 }
 
-export function Stat({ label, value, sub, tone }: { label: string; value: ReactNode; sub?: ReactNode; tone?: 'good' | 'bad' | 'warn' }) {
+export function Stat({ label, value, sub, tone, accent }: { label: string; value: ReactNode; sub?: ReactNode; tone?: 'good' | 'bad' | 'warn'; accent?: 'green' | 'blue' | 'amber' | 'violet' | 'teal' | 'rose' }) {
   return (
-    <div className="card stat">
+    <div className={`card stat stat-${accent ?? 'green'}`}>
       <span className="label">{label}</span>
       <span className={`value ${tone ?? ''}`}>{value}</span>
       {sub && <span className="sub">{sub}</span>}
@@ -98,11 +98,11 @@ export function Meter({ value, max = 100 }: { value: number; max?: number }) {
   return <div className="meter" role="meter" aria-valuenow={value} aria-valuemax={max}><div style={{ width: `${Math.max(0, Math.min(100, (value / max) * 100))}%` }} /></div>;
 }
 
-export function AttrRow({ label, value }: { label: string; value: number }) {
+export function AttrRow({ label, value, color }: { label: string; value: number; color?: string }) {
   return (
     <div className="attr-row">
       <span>{label}</span>
-      <Meter value={value} />
+      <div className="meter"><div style={{ width: `${Math.max(0, Math.min(100, value))}%`, background: color }} /></div>
       <span className="mono">{value.toFixed(0)}</span>
     </div>
   );

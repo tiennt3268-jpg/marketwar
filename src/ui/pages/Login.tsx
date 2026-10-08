@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { login, register } from '../auth';
+import { login, register, type User } from '../auth';
 import { Tabs } from '../components';
 
-export default function Login({ onLogin }: { onLogin: (user: string) => void }) {
+export default function Login({ onLogin }: { onLogin: (user: User) => void }) {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');

@@ -5,7 +5,7 @@ import type { GameState } from '../engine/types';
 const INDEX_KEY = 'marketwars:index';
 const GAME_KEY = (id: string) => `marketwars:game:${id}`;
 
-export interface SavedGameMeta { id: string; name: string; round: number; phase: string; teams: number; savedAt: string; owner?: string }
+export interface SavedGameMeta { id: string; name: string; round: number; phase: string; teams: number; savedAt: string; owner?: string; classId?: string }
 
 function safeGet(key: string): string | null {
   try { return localStorage.getItem(key); } catch { return null; }
@@ -21,15 +21,15 @@ function allSaved(): SavedGameMeta[] {
   try { return JSON.parse(safeGet(INDEX_KEY) ?? '[]') as SavedGameMeta[]; } catch { return []; }
 }
 
-export function listSaved(owner?: string): SavedGameMeta[] {
-  return allSaved().filter((g) => !owner || g.owner === owner);
+export function listSaved(classId?: string): SavedGameMeta[] {
+  return allSaved().filter((g) => !classId || g.classId === classId);
 }
 
 export function saveGame(game: GameState): boolean {
   // Keep only the last 4 journals in storage to stay within quota; full journals live in memory/export.
   const slim: GameState = { ...game, results: game.results.map((r, i) => (i < game.results.length - 4 ? { ...r, journal: [] } : r)) };
   const ok = safeSet(GAME_KEY(game.id), JSON.stringify(slim));
-  const meta: SavedGameMeta = { id: game.id, name: game.name, round: game.round, phase: game.phase, teams: game.companies.length, savedAt: new Date().toISOString(), owner: game.owner };
+  const meta: SavedGameMeta = { id: game.id, name: game.name, round: game.round, phase: game.phase, teams: game.companies.length, savedAt: new Date().toISOString(), owner: game.owner, classId: game.classId };
   const idx = allSaved().filter((g) => g.id !== game.id);
   safeSet(INDEX_KEY, JSON.stringify([meta, ...idx].slice(0, 50)));
   return ok;
@@ -63,4 +63,30 @@ export function downloadText(filename: string, text: string, mime = 'application
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/* ------------------------------------------------------------- classes */
+
+export interface ClassInfo { id: string; name: string; code: string; term: string; createdBy: string; createdAt: string }
+const CLASSES_KEY = 'marketwars:classes';
+let memoryClasses: ClassInfo[] = [];
+
+export function listClasses(): ClassInfo[] {
+  const raw = safeGet(CLASSES_KEY);
+  if (!raw) return memoryClasses;
+  try { return JSON.parse(raw) as ClassInfo[]; } catch { return memoryClasses; }
+}
+
+function writeClasses(list: ClassInfo[]) {
+  memoryClasses = list;
+  safeSet(CLASSES_KEY, JSON.stringify(list));
+}
+
+export function saveClass(c: ClassInfo) {
+  writeClasses([c, ...listClasses().filter((x) => x.id !== c.id)]);
+}
+
+export function deleteClass(id: string) {
+  for (const g of listSaved(id)) deleteGame(g.id);
+  writeClasses(listClasses().filter((x) => x.id !== id));
 }

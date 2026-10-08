@@ -37,10 +37,10 @@ export default function Overview() {
       </div>
 
       <div className="grid g4">
-        <Stat label="Cash" value={fmtK(L.cash)} sub={`Credit available ${fmtK(creditLimit(co))}`} tone={L.cash < 300_000 ? 'warn' : undefined} />
-        <Stat label="Equity" value={fmtK(L.equityCapital + L.retainedEarnings)} sub={`Assets ${fmtK(totalAssets(L))} · Debt ${fmtK(L.debt)}`} />
-        <Stat label="Last net income" value={last ? fmtK(last.income.netIncome) : '—'} tone={last ? (last.income.netIncome >= 0 ? 'good' : 'bad') : undefined} sub={last ? `Revenue ${fmtK(last.income.revenue + last.income.royaltyIncome)}` : undefined} />
-        <Stat label="Score / Rank" value={rank && isScored(game, lastRes.round) ? `${rank.score.toFixed(1)} · #${rank.rank}` : '—'} sub={isScored(game, game.round) ? undefined : 'Practice'} />
+        <Stat accent="green" label="Cash" value={fmtK(L.cash)} sub={`Credit available ${fmtK(creditLimit(co))}`} tone={L.cash < 300_000 ? 'warn' : undefined} />
+        <Stat accent="blue" label="Equity" value={fmtK(L.equityCapital + L.retainedEarnings)} sub={`Assets ${fmtK(totalAssets(L))} · Debt ${fmtK(L.debt)}`} />
+        <Stat accent="amber" label="Last net income" value={last ? fmtK(last.income.netIncome) : '—'} tone={last ? (last.income.netIncome >= 0 ? 'good' : 'bad') : undefined} sub={last ? `Revenue ${fmtK(last.income.revenue + last.income.royaltyIncome)}` : undefined} />
+        <Stat accent="violet" label="Score / Rank" value={rank && isScored(game, lastRes.round) ? `${rank.score.toFixed(1)} · #${rank.rank}` : '—'} sub={isScored(game, game.round) ? undefined : 'Practice'} />
       </div>
 
       <div className="grid g2" style={{ marginTop: 16, alignItems: 'start' }}>
