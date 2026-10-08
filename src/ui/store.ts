@@ -5,7 +5,7 @@ import type { GameState } from '../engine/types';
 const INDEX_KEY = 'marketwars:index';
 const GAME_KEY = (id: string) => `marketwars:game:${id}`;
 
-export interface SavedGameMeta { id: string; name: string; round: number; phase: string; teams: number; savedAt: string; owner?: string; classId?: string; members?: string[]; solo?: boolean }
+export interface SavedGameMeta { id: string; name: string; round: number; phase: string; teams: number; savedAt: string; owner?: string; classId?: string; members?: string[]; solo?: boolean; deadline?: string | null }
 
 function safeGet(key: string): string | null {
   try { return localStorage.getItem(key); } catch { return null; }
@@ -33,7 +33,7 @@ export function saveGame(game: GameState): boolean {
   // Keep only the last 4 journals in storage to stay within quota; full journals live in memory/export.
   const slim: GameState = { ...game, results: game.results.map((r, i) => (i < game.results.length - 4 ? { ...r, journal: [] } : r)) };
   const ok = safeSet(GAME_KEY(game.id), JSON.stringify(slim));
-  const meta: SavedGameMeta = { id: game.id, name: game.name, round: game.round, phase: game.phase, teams: game.companies.length, savedAt: new Date().toISOString(), owner: game.owner, classId: game.classId, members: (game.members ?? []).map((m) => m.username), solo: !!game.solo };
+  const meta: SavedGameMeta = { id: game.id, name: game.name, round: game.round, phase: game.phase, teams: game.companies.length, savedAt: new Date().toISOString(), owner: game.owner, classId: game.classId, members: (game.members ?? []).map((m) => m.username), solo: !!game.solo, deadline: game.phase === 'OPEN' ? game.schedule?.deadline ?? null : null };
   const idx = allSaved().filter((g) => g.id !== game.id);
   safeSet(INDEX_KEY, JSON.stringify([meta, ...idx].slice(0, 50)));
   return ok;

@@ -40,7 +40,7 @@ export default function Overview() {
         <Stat accent="green" label="Cash" value={fmtK(L.cash)} sub={`Credit available ${fmtK(creditLimit(co))}`} tone={L.cash < 300_000 ? 'warn' : undefined} />
         <Stat accent="blue" label="Equity" value={fmtK(L.equityCapital + L.retainedEarnings)} sub={`Assets ${fmtK(totalAssets(L))} · Debt ${fmtK(L.debt)}`} />
         <Stat accent="amber" label="Last net income" value={last ? fmtK(last.income.netIncome) : '—'} tone={last ? (last.income.netIncome >= 0 ? 'good' : 'bad') : undefined} sub={last ? `Revenue ${fmtK(last.income.revenue + last.income.royaltyIncome)}` : undefined} />
-        <Stat accent="violet" label="Score / Rank" value={rank && isScored(game, lastRes.round) ? `${rank.score.toFixed(1)} · #${rank.rank}` : '—'} sub={isScored(game, game.round) ? undefined : 'Practice'} />
+        <Stat accent="violet" label="Score / Rank" value={rank ? `${rank.score.toFixed(1)} · #${rank.rank}` : '—'} sub={lastRes ? <button className="btn sm" onClick={() => go('report')}>{isScored(game, lastRes.round) ? 'Round report' : 'Practice report'}</button> : undefined} />
       </div>
 
       <div className="grid g2" style={{ marginTop: 16, alignItems: 'start' }}>

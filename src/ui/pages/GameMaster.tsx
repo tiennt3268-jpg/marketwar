@@ -6,14 +6,13 @@ import { VARIABLE_REGISTRY, validateEventTemplate } from '../../engine/events';
 import { COUNTRIES, type CountryCode, type EventEffect, type EventTemplate, type GameState } from '../../engine/types';
 import { deepClone, fmtK, fmtNum } from '../../engine/util';
 import { downloadText } from '../store';
-import { assignAccount, companyOwner, memberCompany, unassignAccount } from '../../engine/members';
-import { getAccount, listAccounts } from '../auth';
+import { runRound, setDeadline, timeLeft } from '../rounds';
 
-type Tab = 'rounds' | 'players' | 'scenario' | 'events' | 'grading';
+type Tab = 'rounds' | 'scenario' | 'events' | 'grading';
 
-export default function GameMaster({ tab: initialTab = 'rounds' }: { tab?: Tab }) {
-  const { game, setGame } = useGame();
-  const [tab, setTab] = useState<Tab>(initialTab);
+export default function GameMaster() {
+  const { game, setGame, user } = useGame();
+  const [tab, setTab] = useState<Tab>('rounds');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [lastInput, setLastInput] = useState<GameState | null>(null);
@@ -26,11 +25,11 @@ export default function GameMaster({ tab: initialTab = 'rounds' }: { tab?: Tab }
     setError('');
     setTimeout(() => {
       try {
-        const input = audit(deepClone(game), 'LOCK', `Round ${game.round} locked`);
-        const { game: next } = processRound(input);
-        setLastInput(input);
+        const input = deepClone(game);
+        const next = runRound(input, user.username, 'manual');
+        setLastInput({ ...input, audit: next.audit.slice(0, input.audit.length + 1) });
         setReplay(null);
-        setGame(audit(next, 'PUBLISH', `Round ${game.round} published`));
+        setGame(next);
       } catch (e) {
         setError(`Processing failed: ${(e as Error).message}`);
       } finally {
@@ -54,9 +53,10 @@ export default function GameMaster({ tab: initialTab = 'rounds' }: { tab?: Tab }
       <div className="section-title"><h1>Game Master</h1>
         <button className="btn sm" onClick={() => downloadText(`${game.name.replace(/\W+/g, '_')}-R${game.round}.json`, JSON.stringify(game))}>Export save</button>
       </div>
-      <Tabs value={tab} onChange={setTab} items={[{ value: 'rounds', label: 'Rounds' }, { value: 'players', label: 'Players & companies' }, { value: 'scenario', label: 'Country parameters' }, { value: 'events', label: 'Events' }, { value: 'grading', label: 'Grading' }]} />
+      <Tabs value={tab} onChange={setTab} items={[{ value: 'rounds', label: 'Rounds' }, { value: 'scenario', label: 'Country parameters' }, { value: 'events', label: 'Events' }, { value: 'grading', label: 'Grading' }]} />
 
       {tab === 'rounds' && (
+        <div className="stack">
         <div className="grid g2" style={{ alignItems: 'start' }}>
           <Card title={game.phase === 'FINISHED' ? 'Game finished' : `Round ${game.round} / ${totalRounds(game)} · ${isScored(game, game.round) ? 'Scored' : 'Practice'}`}>
             <div className="table-wrap"><table>
@@ -66,7 +66,7 @@ export default function GameMaster({ tab: initialTab = 'rounds' }: { tab?: Tab }
                 return (
                   <tr key={c.id}>
                     <td><span className="inline"><i className="dot" style={{ background: c.color }} />{c.name}</span></td>
-                    <td>{c.isBot ? 'Bot' : 'Human'}</td>
+                    <td>{c.isBot ? 'Bot' : 'Student'}</td>
                     <td>{c.status === 'bankrupt' ? <Badge tone="bad">Bankrupt</Badge> : c.isBot ? <Badge tone="info">Auto</Badge> : d?.submitted ? <Badge tone="good">Submitted</Badge> : <Badge tone="warn">Pending</Badge>}</td>
                     <td className="num">{d?.revision ?? 0}</td>
                   </tr>
@@ -95,12 +95,13 @@ export default function GameMaster({ tab: initialTab = 'rounds' }: { tab?: Tab }
             )}
           </Card>
         </div>
+        <Schedule />
+        </div>
       )}
 
       {tab === 'scenario' && <ScenarioEditor setGame={(g, msg) => setGame(audit(g, 'SCENARIO_EDIT', msg))} />}
       {tab === 'events' && <EventsEditor setGame={(g, msg) => setGame(audit(g, 'EVENT_EDIT', msg))} />}
       {tab === 'grading' && <Grading />}
-      {tab === 'players' && <Players />}
     </div>
   );
 }
@@ -252,87 +253,46 @@ function Grading() {
   );
 }
 
-function Players() {
-  const { game, setGame } = useGame();
-  const [query, setQuery] = useState('');
+
+const toLocalInput = (iso: string) => {
+  const d = new Date(iso);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+};
+
+function Schedule() {
+  const { game, setGame, user } = useGame();
+  const sch = game.schedule;
+  const [when, setWhen] = useState(() => toLocalInput(sch?.deadline ?? new Date(Date.now() + 24 * 3600_000).toISOString()));
+  const [amount, setAmount] = useState(() => (sch?.durationMin ? (sch.durationMin % 1440 === 0 ? sch.durationMin / 1440 : sch.durationMin % 60 === 0 ? sch.durationMin / 60 : sch.durationMin) : 1));
+  const [unit, setUnit] = useState<'min' | 'hour' | 'day'>(() => (sch?.durationMin ? (sch.durationMin % 1440 === 0 ? 'day' : sch.durationMin % 60 === 0 ? 'hour' : 'min') : 'day'));
+  const [auto, setAuto] = useState(sch?.autoAdvance ?? true);
   const [error, setError] = useState('');
-  const accounts = listAccounts();
-  const humans = game.companies.filter((c) => !c.isBot);
-  const q = query.trim().toLowerCase();
-  const shown = accounts.filter((a) => !q || `${a.username} ${a.profile.fullName} ${a.profile.studentId} ${a.profile.email} ${a.profile.cohort}`.toLowerCase().includes(q));
-  const apply = (fn: () => GameState, detail: string) => {
+  const minutes = Math.max(1, Math.round(amount * { min: 1, hour: 60, day: 1440 }[unit]));
+  if (game.phase === 'FINISHED') return null;
+
+  const save = () => {
+    const t = new Date(when).getTime();
+    if (!Number.isFinite(t)) { setError('Enter a valid date and time'); return; }
+    if (t <= Date.now()) { setError('Deadline must be in the future'); return; }
     setError('');
-    try {
-      const g = fn();
-      setGame({ ...g, audit: [...g.audit, { at: new Date().toISOString(), round: g.round, actor: 'GM', event: 'ACCOUNTS', detail }] });
-    } catch (e) { setError((e as Error).message); }
+    setGame(setDeadline(game, new Date(t).toISOString(), minutes, auto, user.username));
   };
-  const label = (u: string) => { const a = getAccount(u); return a ? `${a.profile.fullName || a.username} (${a.username})` : u; };
 
   return (
-    <div className="stack">
-      {error && <div className="alert bad small">{error}</div>}
-      <Card title="Companies">
-        {humans.length === 0 ? <p className="muted small">This game has no student companies.</p> : (
-          <div className="table-wrap"><table>
-            <thead><tr><th>Company</th><th>Account</th><th>Student ID</th><th>Email</th><th>Class</th></tr></thead>
-            <tbody>{humans.map((c) => {
-              const owner = companyOwner(game, c.id);
-              const acc = owner ? getAccount(owner) : null;
-              return (
-                <tr key={c.id}>
-                  <td><span className="inline"><i className="dot" style={{ background: c.color }} />{c.name}</span></td>
-                  <td>
-                    <select id={`owner-${c.id}`} value={owner ?? ''} style={{ width: 'auto', minWidth: 200 }} onChange={(e) => {
-                      const v = e.target.value;
-                      apply(() => {
-                        let g = owner ? unassignAccount(game, owner) : game;
-                        if (v) g = assignAccount(g, v, c.id);
-                        return g;
-                      }, `${c.id} → ${v || 'none'}`);
-                    }}>
-                      <option value="">Unassigned</option>
-                      {accounts.filter((a) => a.username === owner || !memberCompany(game, a.username)).map((a) => <option key={a.username} value={a.username}>{label(a.username)}</option>)}
-                    </select>
-                  </td>
-                  <td>{acc?.profile.studentId || '—'}</td>
-                  <td>{acc?.profile.email || '—'}</td>
-                  <td>{acc?.profile.cohort || '—'}</td>
-                </tr>
-              );
-            })}</tbody>
-          </table></div>
-        )}
-      </Card>
-      <Card title={`Registered students (${accounts.length})`} actions={<input id="player-search" type="text" placeholder="Search" value={query} onChange={(e) => setQuery(e.target.value)} style={{ width: 200 }} />}>
-        {shown.length === 0 ? <p className="muted small">No student accounts.</p> : (
-          <div className="table-wrap"><table>
-            <thead><tr><th>Name</th><th>Username</th><th>Student ID</th><th>Email</th><th>Class</th><th>Registered</th><th>Company</th></tr></thead>
-            <tbody>{shown.map((a) => {
-              const cid = memberCompany(game, a.username);
-              return (
-                <tr key={a.username}>
-                  <td><b>{a.profile.fullName || '—'}</b></td>
-                  <td>{a.username}</td>
-                  <td>{a.profile.studentId || '—'}</td>
-                  <td>{a.profile.email || '—'}</td>
-                  <td>{a.profile.cohort || '—'}</td>
-                  <td>{new Date(a.createdAt).toLocaleDateString('en-GB')}</td>
-                  <td>
-                    <select id={`assign-${a.username}`} value={cid ?? ''} style={{ width: 'auto' }} onChange={(e) => {
-                      const v = e.target.value;
-                      apply(() => (v ? assignAccount(game, a.username, v) : unassignAccount(game, a.username)), `${a.username} → ${v || 'none'}`);
-                    }}>
-                      <option value="">Not in game</option>
-                      {humans.map((c) => { const o = companyOwner(game, c.id); return <option key={c.id} value={c.id} disabled={!!o && o !== a.username}>{c.name}{o && o !== a.username ? ' (taken)' : ''}</option>; })}
-                    </select>
-                  </td>
-                </tr>
-              );
-            })}</tbody>
-          </table></div>
-        )}
-      </Card>
-    </div>
+    <Card title="Round deadline" actions={sch?.deadline ? <Badge tone="warn">Closes in {timeLeft(sch.deadline)}</Badge> : <Badge>Manual</Badge>}>
+      <div className="form-grid">
+        <label className="field"><span>Round {game.round} closes at</span><input id="deadline-at" type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} /></label>
+        <NumField label="Next rounds last" value={amount} step={1} min={1} onChange={setAmount} />
+        <SelectField label="Unit" value={unit} onChange={setUnit} options={[{ value: 'min', label: 'Minutes' }, { value: 'hour', label: 'Hours' }, { value: 'day', label: 'Days' }]} />
+      </div>
+      <div style={{ marginTop: 10 }}><Check label="Open the next round automatically with a new deadline" checked={auto} onChange={setAuto} /></div>
+      {error && <div className="alert bad small" style={{ marginTop: 8 }}>{error}</div>}
+      <div className="row" style={{ marginTop: 12 }}>
+        <button className="btn primary sm" onClick={save}>{sch?.deadline ? 'Update deadline' : 'Set deadline'}</button>
+        {sch?.deadline && <button className="btn sm" onClick={() => setGame(setDeadline(game, null, minutes, auto, user.username))}>Clear deadline</button>}
+      </div>
+      {sch?.deadline && <div className="small muted" style={{ marginTop: 8 }}>{new Date(sch.deadline).toLocaleString('en-GB')}{sch.autoAdvance ? ` · then every ${sch.durationMin >= 1440 ? `${sch.durationMin / 1440} day(s)` : sch.durationMin >= 60 ? `${sch.durationMin / 60} hour(s)` : `${sch.durationMin} min`}` : ''}</div>}
+    </Card>
   );
 }

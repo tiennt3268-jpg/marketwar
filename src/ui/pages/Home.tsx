@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { catchUpSaved, timeLeft } from '../rounds';
 import { createGame, type TeamConfig } from '../../engine/engine';
 import { BOT_LEVELS, BOT_PROFILES, BOT_STRATEGIES } from '../../engine/bots';
 import { defaultScenario } from '../../engine/scenario';
@@ -7,12 +8,12 @@ import type { User } from '../auth';
 import { deleteGame, listSaved, loadGame, type ClassInfo } from '../store';
 import { Badge, Card, Empty, NumField, SelectField } from '../components';
 
-const COLORS = ['#1f8f4e', '#2b6cb0', '#d97706', '#7c3aed', '#db2777', '#0d9488', '#b45309', '#4b5563'];
+const COLORS = ['#1f8f4e', '#2a78d6', '#eb6834', '#4a3aa7', '#eda100', '#e87ba4', '#1baf7a', '#8a5a00'];
 const DEFAULT_NAMES = ['Saigon Brew', 'Hanoi Roasters', 'Mekong Coffee', 'Dalat Highlands', 'Hue Heritage', 'Da Nang Drip', 'Can Tho Cafe', 'Ha Long Beans'];
 
 type TeamRow = TeamConfig;
 
-export default function Home({ user, cls, onOpen, onBack, onSignOut }: { user: User; cls: ClassInfo; onOpen: (g: GameState) => void; onBack: () => void; onSignOut: () => void }) {
+export default function Home({ user, cls, onOpen, onBack, onSignOut, notifications }: { user: User; cls: ClassInfo; onOpen: (g: GameState) => void; onBack: () => void; onSignOut: () => void; notifications?: React.ReactNode }) {
   const isAdmin = user.role === 'admin';
   const [name, setName] = useState(`${cls.name} – Game 1`);
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 1_000_000));
@@ -27,6 +28,7 @@ export default function Home({ user, cls, onOpen, onBack, onSignOut }: { user: U
   ]);
   const visible = () => listSaved(cls.id).filter((g) => isAdmin || g.members?.includes(user.username));
   const [saved, setSaved] = useState(visible);
+  useEffect(() => { if (catchUpSaved(listSaved(cls.id))) setSaved(visible()); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [importError, setImportError] = useState('');
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
 
@@ -62,7 +64,7 @@ export default function Home({ user, cls, onOpen, onBack, onSignOut }: { user: U
             <div key={s.id} className="game-item">
               <div>
                 <b>{s.name}</b>
-                <div className="small muted">{s.teams} teams · round {s.round} · {new Date(s.savedAt).toLocaleString('en-GB')}</div>
+                <div className="small muted">{s.teams} companies · round {s.round} · {new Date(s.savedAt).toLocaleString('en-GB')}{s.deadline ? ` · deadline in ${timeLeft(s.deadline)}` : ''}</div>
               </div>
               <div className="row">
                 <Badge tone={s.phase === 'FINISHED' ? 'warn' : 'good'}>{s.phase}</Badge>
@@ -95,6 +97,7 @@ export default function Home({ user, cls, onOpen, onBack, onSignOut }: { user: U
         </div>
         <div className="row small">
           <span className="muted">Signed in as <b>{user.username}</b></span>
+          {notifications}
           <button className="btn sm" onClick={onSignOut}>Sign out</button>
         </div>
       </div>

@@ -8,9 +8,9 @@ import { defaultScenario } from '../../engine/scenario';
 import type { BotLevel, GameState } from '../../engine/types';
 
 const BOT_NAMES = ['Hanoi Roasters', 'Mekong Coffee', 'Dalat Highlands', 'Hue Heritage', 'Da Nang Drip'];
-const BOT_COLORS = ['#2b6cb0', '#d97706', '#7c3aed', '#db2777', '#0d9488'];
+const BOT_COLORS = ['#2a78d6', '#eb6834', '#4a3aa7', '#eda100', '#e87ba4'];
 
-export default function Classes({ user, onSelect, onOpenGame, onSignOut }: { user: User; onSelect: (c: ClassInfo) => void; onOpenGame: (g: GameState) => void; onSignOut: () => void }) {
+export default function Classes({ user, onSelect, onOpenGame, onSignOut, notifications }: { user: User; onSelect: (c: ClassInfo) => void; onOpenGame: (g: GameState) => void; onSignOut: () => void; notifications?: React.ReactNode }) {
   const isAdmin = user.role === 'admin';
   const [classes, setClasses] = useState(() => listClasses());
   const [name, setName] = useState('');
@@ -54,6 +54,7 @@ export default function Classes({ user, onSelect, onOpenGame, onSignOut }: { use
         <div className="row small">
           <span className="muted">Signed in as <b>{user.profile.fullName || user.username}</b></span>
           <Badge tone={isAdmin ? 'accent' : 'info'}>{isAdmin ? 'Game Master' : 'Student'}</Badge>
+          {notifications}
           <button className="btn sm" onClick={onSignOut}>Sign out</button>
         </div>
       </div>

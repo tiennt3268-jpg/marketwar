@@ -3,14 +3,15 @@ import { Badge, Card } from '../components';
 import { estimateSpend, latestVersion, sanitizeDecision, validateDecision } from '../../engine/decisions';
 import { sameFormula } from '../../engine/product';
 import { MODE_RULES } from '../../engine/scenario';
-import { processRound } from '../../engine/engine';
+import { runRound } from '../rounds';
+import { notify } from '../notifications';
 import { COUNTRIES } from '../../engine/types';
 import { fmtK, fmtNum, sum } from '../../engine/util';
 
 const FIELD_PAGE: [RegExp, string][] = [[/^skus/, 'product'], [/^production|^outsourcing/, 'operations'], [/^shipments/, 'operations'], [/^countries\.\w+\.(entry|partner|ownership)/, 'strategy'], [/^countries/, 'marketing'], [/newLoan|debt|dividend|budget/, 'treasury']];
 
 export default function Submit() {
-  const { game, setGame, company: co, decision: d, readOnly, go } = useTeam();
+  const { game, setGame, company: co, decision: d, readOnly, go, user } = useTeam();
   const clean = sanitizeDecision(d, co, game.scenario, game.round);
   const issues = validateDecision(clean, co, game);
   const errors = issues.filter((i) => i.severity === 'error');
@@ -42,10 +43,12 @@ export default function Submit() {
       audit: [...game.audit, { at: new Date().toISOString(), round: game.round, actor: co.name, event: 'SUBMIT', detail: `revision ${next.revision}` }],
     };
     if (game.solo) {
-      const out = processRound(g).game;
-      setGame(out);
-      go('reports');
-    } else setGame(g);
+      setGame(runRound(g, user.username, 'solo'));
+      go('report');
+    } else {
+      setGame(g);
+      notify([game.owner], { gameId: game.id, gameName: game.name, kind: 'submit', title: `${co.name} submitted round ${game.round}`, body: `by ${user.profile.fullName || user.username}` });
+    }
   };
   const amend = () => {
     setGame({

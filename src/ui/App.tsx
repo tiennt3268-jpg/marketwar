@@ -1,9 +1,11 @@
-import { useCallback, useMemo, useState, type ReactElement } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react';
 import type { Decision, GameState } from '../engine/types';
 import { carryForward } from '../engine/decisions';
 import { isScored, totalRounds } from '../engine/engine';
 import { Ctx, type GameCtx, type Viewer } from './context';
-import { saveGame, type ClassInfo } from './store';
+import { listClasses, loadGame, saveGame, type ClassInfo } from './store';
+import { catchUp, timeLeft } from './rounds';
+import NotificationsButton from './Notifications';
 import { currentUser, logout, type User } from './auth';
 import { Badge, Empty } from './components';
 import Login from './pages/Login';
@@ -22,6 +24,8 @@ import Finance from './pages/Finance';
 import Leaderboard from './pages/Leaderboard';
 import History from './pages/History';
 import GameMaster from './pages/GameMaster';
+import Assign from './pages/Assign';
+import Report from './pages/Report';
 
 const TEAM_NAV: { group: string; items: { id: string; label: string }[] }[] = [
   { group: 'Company', items: [{ id: 'overview', label: 'Overview' }, { id: 'intelligence', label: 'Market Intelligence' }] },
@@ -31,11 +35,14 @@ const TEAM_NAV: { group: string; items: { id: string; label: string }[] }[] = [
     { id: 'treasury', label: 'Finance & Risk' }, { id: 'submit', label: 'Review & Submit' },
   ] },
   { group: 'Results', items: [
-    { id: 'reports', label: 'Market Share & Positioning' }, { id: 'finance', label: 'Financial Statements' },
+    { id: 'report', label: 'Round Report' }, { id: 'reports', label: 'Market Share & Positioning' }, { id: 'finance', label: 'Financial Statements' },
     { id: 'leaderboard', label: 'Leaderboard' }, { id: 'history', label: 'History' },
   ] },
 ];
-const GM_NAV = [{ group: 'Game Master', items: [{ id: 'gm', label: 'Round Control' }, { id: 'players', label: 'Players & Companies' }, { id: 'reports', label: 'Market Share & Positioning' }, { id: 'leaderboard', label: 'Leaderboard' }] }];
+const GM_NAV = [
+  { group: 'Game Master', items: [{ id: 'gm', label: 'Round Control' }, { id: 'assign', label: 'Assign Companies' }] },
+  { group: 'Results', items: [{ id: 'report', label: 'Round Report' }, { id: 'reports', label: 'Market Share & Positioning' }, { id: 'leaderboard', label: 'Leaderboard' }] },
+];
 
 export default function App() {
   const [user, setUser] = useState<User | null>(() => currentUser());
@@ -44,6 +51,7 @@ export default function App() {
   const [viewer, setViewer] = useState<Viewer>({ role: 'gm' });
   const [page, setPage] = useState('overview');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
 
   const setGame = useCallback((g: GameState) => {
     setGameState(g);
@@ -53,12 +61,31 @@ export default function App() {
   const isAdmin = user?.role === 'admin';
   const membership = game && user ? game.members?.find((m) => m.username === user.username) : undefined;
 
-  const openGame = (g: GameState) => {
+  // Deadline scheduler: process due rounds while the game is open (and on open).
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  useEffect(() => {
+    if (!game?.schedule?.deadline || game.phase !== 'OPEN') return;
+    if (Date.parse(game.schedule.deadline) <= now) setGame(catchUp(game, now));
+  }, [now, game, setGame]);
+
+  const openGame = (input: GameState) => {
+    const g = catchUp(input);
+    if (g !== input) saveGame(g);
     setGameState(g);
     if (user?.role === 'admin') { setViewer({ role: 'gm' }); setPage('gm'); return; }
     const m = g.members?.find((x) => x.username === user?.username);
     if (m) setViewer({ role: 'team', companyId: m.companyId });
     setPage('overview');
+  };
+
+  const openById = (id: string) => {
+    const g = loadGame(id);
+    if (!g) return;
+    setCls(listClasses().find((c) => c.id === g.classId) ?? null);
+    openGame(g);
   };
 
   const signOut = () => { logout(); setGameState(null); setCls(null); setUser(null); };
@@ -84,8 +111,8 @@ export default function App() {
   }, [game, viewer, setGame, user, isAdmin]);
 
   if (!user) return <Login onLogin={setUser} />;
-  if (!cls && !game) return <Classes user={user} onSelect={setCls} onOpenGame={openGame} onSignOut={signOut} />;
-  if (!game || !ctx) return cls && <Home user={user} cls={cls!} onOpen={openGame} onBack={() => setCls(null)} onSignOut={signOut} />;
+  if (!cls && !game) return <Classes user={user} onSelect={setCls} onOpenGame={openGame} onSignOut={signOut} notifications={<NotificationsButton username={user.username} onOpenGame={openById} />} />;
+  if (!game || !ctx) return cls && <Home user={user} cls={cls!} onOpen={openGame} onBack={() => setCls(null)} onSignOut={signOut} notifications={<NotificationsButton username={user.username} onOpenGame={openById} />} />;
 
   if (!isAdmin && !membership) {
     return (
@@ -109,7 +136,7 @@ export default function App() {
   const submittedCount = game.companies.filter((c) => c.isBot || game.decisions[c.id]?.submitted || c.status === 'bankrupt').length;
 
   let body: ReactElement;
-  const teamOnly = (el: ReactElement) => (ctx.company ? el : <GameMaster tab="rounds" />);
+  const teamOnly = (el: ReactElement) => (ctx.company ? el : <GameMaster />);
   switch (page) {
     case 'overview': body = teamOnly(<Overview />); break;
     case 'intelligence': body = teamOnly(<Intelligence />); break;
@@ -123,8 +150,9 @@ export default function App() {
     case 'finance': body = teamOnly(<Finance />); break;
     case 'leaderboard': body = <Leaderboard />; break;
     case 'history': body = teamOnly(<History />); break;
-    case 'players': body = <GameMaster key="players" tab="players" />; break;
-    default: body = <GameMaster key="rounds" tab="rounds" />;
+    case 'assign': body = isAdmin ? <Assign /> : teamOnly(<Overview />); break;
+    case 'report': body = <Report />; break;
+    default: body = <GameMaster />;
   }
 
   return (
@@ -158,7 +186,9 @@ export default function App() {
               <Badge tone={game.phase === 'OPEN' ? 'good' : game.phase === 'FINISHED' ? 'warn' : undefined}>{game.phase}</Badge>
               <span className="small muted">Submitted {submittedCount}/{game.companies.length}</span>
               {game.round <= totalRounds(game) && game.activeEvents.length > 0 && <Badge tone="warn">{game.activeEvents.length} active event{game.activeEvents.length > 1 ? 's' : ''}</Badge>}
+              {game.schedule?.deadline && game.phase === 'OPEN' && <span className="deadline-chip" title={new Date(game.schedule.deadline).toLocaleString('en-GB')}>Deadline {timeLeft(game.schedule.deadline, now)}</span>}
             </div>
+            <NotificationsButton username={user.username} onOpenGame={openById} />
             {isAdmin ? (
               <label className="row small">
                 <span className="muted">Viewing as</span>

@@ -828,12 +828,11 @@ export function processRound(input: GameState): RoundOutput {
   }
 
   // 14. Scores & inferred strategy
-  const scored = isScored(game, round);
   const leaderboard = computeLeaderboard(game, [...game.results, { countryResults } as RoundResult], round);
   for (const co of game.companies) {
     const h = co.history[co.history.length - 1];
     const lb = leaderboard.find((l) => l.companyId === co.id)!;
-    h.score = scored ? lb.score : 0;
+    h.score = lb.score;
     h.scoreParts = lb.parts;
     h.strategyInferred = inferStrategy(co, positions.filter((p) => p.companyId === co.id), countryResults.filter((r) => r.companyId === co.id));
   }
@@ -967,8 +966,9 @@ const norm = (x: number, lo: number, hi: number) => clamp(((x - lo) / (hi - lo))
 
 export function computeLeaderboard(game: GameState, results: Pick<RoundResult, 'countryResults'>[], round: number) {
   const w = game.scenario.scoring;
-  void round;
-  const scoredResults = results.filter((_, i) => isScored(game, i + 1));
+  // Practice rounds are ranked among themselves; scored rounds only count scored results.
+  const inPhase = (r: number) => isScored(game, r) === isScored(game, round) && r <= round;
+  const scoredResults = results.filter((_, i) => inPhase(i + 1));
   const totalBoxes = sum(scoredResults.flatMap((r) => r.countryResults.map((x) => x.salesBoxes)));
   const n = game.companies.length;
   const rows = game.companies.map((co) => {
@@ -976,19 +976,20 @@ export function computeLeaderboard(game: GameState, results: Pick<RoundResult, '
     const share = totalBoxes > 0 ? boxes / totalBoxes : 0;
     const L = co.ledger;
     const invested = L.equityCapital + Math.max(L.debt, 0);
-    const roic = co.cumulativeNetIncome / Math.max(1, invested);
+    const cumNI = sum(co.history.filter((h) => inPhase(h.round)).map((h) => h.income.netIncome));
+    const roic = cumNI / Math.max(1, invested);
     const brand = sum(COUNTRIES.map((c) => co.countries[c].brand)) / COUNTRIES.length;
     const assets = totalAssets(L);
     const eqRatio = assets > 0 ? (L.equityCapital + L.retainedEarnings) / assets : 0;
     const parts = {
-      profit: norm(co.cumulativeNetIncome, -2_000_000, 4_000_000),
+      profit: norm(cumNI, -2_000_000, 4_000_000),
       share: norm(share, 0, 2 / Math.max(1, n)),
       roic: norm(roic, -0.3, 0.5),
       brand: norm(brand, 0, 60),
       resilience: co.status === 'bankrupt' ? 0 : 0.6 * norm(eqRatio, 0, 1) + 0.4 * norm(L.cash, 0, 500_000),
     };
     const score = round2(parts.profit * w.profit + parts.share * w.share + parts.roic * w.roic + parts.brand * w.brand + parts.resilience * w.resilience);
-    return { companyId: co.id, score, rank: 0, parts: Object.fromEntries(Object.entries(parts).map(([k, v]) => [k, round2(v)])) };
+    return { companyId: co.id, score, rank: 0, cumNetIncome: round2(cumNI), practice: !isScored(game, round), parts: Object.fromEntries(Object.entries(parts).map(([k, v]) => [k, round2(v)])) };
   });
   rows.sort((a, b) => b.score - a.score || a.companyId.localeCompare(b.companyId));
   rows.forEach((r, i) => (r.rank = i + 1));

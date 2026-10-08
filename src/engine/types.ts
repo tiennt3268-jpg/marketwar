@@ -492,7 +492,7 @@ export interface RoundResult {
   countryResults: CountryResult[];
   segmentResults: SegmentResult[];
   positions: PositionSnapshot[];
-  leaderboard: { companyId: string; score: number; rank: number; parts: Record<string, number> }[];
+  leaderboard: { companyId: string; score: number; rank: number; cumNetIncome: number; practice: boolean; parts: Record<string, number> }[];
   journal: JournalEntry[];
 }
 
@@ -501,6 +501,8 @@ export type Phase = 'SETUP' | 'OPEN' | 'LOCKED' | 'PROCESSING' | 'PUBLISHED' | '
 /** A student account that runs exactly one company. */
 export interface GameMember { username: string; companyId: string; addedAt: string }
 export type BotLevel = 'easy' | 'normal' | 'hard';
+/** Round deadline: when it passes the round is locked and processed; autoAdvance opens the next one. */
+export interface RoundSchedule { deadline: string | null; durationMin: number; autoAdvance: boolean }
 
 export interface AuditEntry { at: string; round: number; actor: string; event: string; detail: string }
 
@@ -525,5 +527,6 @@ export interface GameState {
   members?: GameMember[]; // student accounts added by the Game Master (one per company)
   botLevel?: BotLevel; // bot difficulty
   solo?: boolean; // single-player game against bots
+  schedule?: RoundSchedule;
   pins?: Record<string, string>; // optional hot-seat team PINs (local play only)
 }

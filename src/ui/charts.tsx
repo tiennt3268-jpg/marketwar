@@ -100,3 +100,136 @@ export function PositioningMap({ points, height = 320 }: { points: MapPoint[]; h
     </svg>
   );
 }
+
+/* ------------------------------------------------------------------ report charts */
+
+/** Horizontal bars that may be negative (zero line in the middle). Text stays in ink colors. */
+export function SignedBars({ rows, format }: { rows: { label: string; value: number; color: string; strong?: boolean }[]; format: (v: number) => string }) {
+  const max = Math.max(1e-9, ...rows.map((r) => Math.abs(r.value)));
+  const hasNeg = rows.some((r) => r.value < 0);
+  return (
+    <div className="sbars">
+      {rows.map((r) => {
+        const w = (Math.abs(r.value) / max) * (hasNeg ? 50 : 100);
+        const left = hasNeg ? (r.value < 0 ? 50 - w : 50) : 0;
+        return (
+          <div key={r.label} className={`sbar-row ${r.strong ? 'strong' : ''}`} title={`${r.label}: ${format(r.value)}`}>
+            <span className="sbar-label">{r.label}</span>
+            <div className="sbar-track">
+              {hasNeg && <i className="sbar-zero" />}
+              <div className="sbar-fill" style={{ left: `${left}%`, width: `${Math.max(w, 0.6)}%`, background: r.color, borderRadius: r.value < 0 ? '4px 0 0 4px' : '0 4px 4px 0' }} />
+            </div>
+            <span className={`sbar-val ${r.value < 0 ? 'bad' : ''}`}>{format(r.value)}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** One 100% bar per row, split by series, 2px surface gaps, labels on segments >= 9%. */
+export function StackedShare({ rows, series }: { rows: { label: string; values: Record<string, number>; note?: string }[]; series: { id: string; name: string; color: string }[] }) {
+  return (
+    <div>
+      <div className="stack">
+        {rows.map((r) => {
+          const total = series.reduce((a, s) => a + (r.values[s.id] ?? 0), 0);
+          return (
+            <div key={r.label} className="share-row">
+              <span className="sbar-label">{r.label}</span>
+              <div className="share-track">
+                {total <= 0 ? <span className="small muted" style={{ paddingLeft: 8 }}>No sales</span> : series.map((s) => {
+                  const v = r.values[s.id] ?? 0;
+                  if (v <= 0) return null;
+                  const pct = (v / total) * 100;
+                  return (
+                    <div key={s.id} className="share-seg" style={{ width: `${pct}%`, background: s.color }} title={`${r.label} · ${s.name}: ${pct.toFixed(1)}%`}>
+                      {pct >= 9 && <span>{pct.toFixed(0)}%</span>}
+                    </div>
+                  );
+                })}
+              </div>
+              <span className="sbar-val">{r.note ?? ''}</span>
+            </div>
+          );
+        })}
+      </div>
+      <Legend items={series} />
+    </div>
+  );
+}
+
+/** Vertical grouped bars (e.g. demand vs sales per country). */
+export function GroupedBars({ groups, series, format, height = 220, width = 640 }: {
+  groups: { label: string; values: number[] }[]; series: { name: string; color: string }[]; format: (v: number) => string; height?: number; width?: number;
+}) {
+  if (!groups.some((g) => g.values.some((v) => v > 0))) return <p className="muted small">No data for this round.</p>;
+  const W = width, H = height, L = 56, R = 8, T = 14, B = 26;
+  const max = niceMax(Math.max(1, ...groups.flatMap((g) => g.values)));
+  const gw = (W - L - R) / Math.max(1, groups.length);
+  const bw = Math.min(34, (gw * 0.7) / series.length);
+  const y = (v: number) => T + (H - T - B) * (1 - v / max);
+  return (
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="chart" role="img">
+        {[0, 0.5, 1].map((f) => (
+          <g key={f}><line x1={L} x2={W - R} y1={y(max * f)} y2={y(max * f)} className="axis" strokeDasharray={f ? '3 3' : ''} /><text x={L - 6} y={y(max * f) + 4} textAnchor="end">{format(max * f)}</text></g>
+        ))}
+        {groups.map((g, gi) => {
+          const x0 = L + gi * gw + (gw - bw * series.length - 2 * (series.length - 1)) / 2;
+          return (
+            <g key={g.label}>
+              {g.values.map((v, si) => {
+                const h = Math.max(0, y(0) - y(v));
+                const x = x0 + si * (bw + 2);
+                return (
+                  <g key={si}>
+                    <path d={`M${x},${y(0)} v${-Math.max(0, h - 4)} q0,-4 4,-4 h${bw - 8} q4,0 4,4 v${Math.max(0, h - 4)} z`} fill={series[si].color} style={{ display: h > 0 ? undefined : 'none' }}>
+                      <title>{`${g.label} · ${series[si].name}: ${format(v)}`}</title>
+                    </path>
+                  </g>
+                );
+              })}
+              <text x={L + gi * gw + gw / 2} y={H - 8} textAnchor="middle">{g.label}</text>
+            </g>
+          );
+        })}
+      </svg>
+      <Legend items={series} />
+    </div>
+  );
+}
+
+/** Income waterfall: revenue down to net income. */
+export function Waterfall({ steps, format }: { steps: { label: string; value: number }[]; format: (v: number) => string }) {
+  const W = 520, rowH = 28, L = 140, R = 76;
+  let run = 0;
+  const bars = steps.map((s, i) => {
+    const total = i === steps.length - 1;
+    const start = total ? 0 : run;
+    const end = total ? s.value : run + s.value;
+    if (!total) run = end;
+    return { ...s, start, end, total };
+  });
+  const lo = Math.min(0, ...bars.map((b) => Math.min(b.start, b.end)));
+  const hi = Math.max(1, ...bars.map((b) => Math.max(b.start, b.end)));
+  const x = (v: number) => L + ((v - lo) / (hi - lo)) * (W - L - R);
+  const H = bars.length * rowH + 10;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="chart" role="img" aria-label="Income waterfall">
+      <line x1={x(0)} x2={x(0)} y1={0} y2={H} className="axis" />
+      {bars.map((b, i) => {
+        const y0 = 4 + i * rowH;
+        const a = x(Math.min(b.start, b.end)), w = Math.max(1.5, Math.abs(x(b.end) - x(b.start)));
+        const color = b.total ? (b.value >= 0 ? '#1f8f4e' : '#c0392b') : b.value >= 0 ? '#2a78d6' : '#eb6834';
+        return (
+          <g key={b.label}>
+            <text x={L - 8} y={y0 + 15} textAnchor="end" style={{ fill: 'var(--text)', fontWeight: b.total ? 700 : 400 }}>{b.label}</text>
+            <rect x={a} y={y0 + 3} width={w} height={rowH - 8} rx={3} fill={color}><title>{`${b.label}: ${format(b.value)}`}</title></rect>
+            <text x={Math.max(x(b.start), x(b.end)) + 6} y={y0 + 15} style={{ fill: 'var(--text)' }}>{format(b.value)}</text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
