@@ -9,7 +9,8 @@ Các đội có cùng điều kiện xuất phát ($5M vốn, nhà máy 300.000 
 ```bash
 npm install
 npm run dev        # http://localhost:5173
-npm test           # 23 test theo ma trận nghiệm thu T-01…T-27 + Monte Carlo
+npm test           # test nghiệm thu T-01…T-27, Monte Carlo, lớp/thành viên/deadline, cân bằng entry mode
+npm run bias       # thí nghiệm đầy đủ: so sánh 7 entry mode × 4 nước × nhiều seed
 npm run build      # bản build tĩnh trong dist/ (deploy Netlify bằng netlify.toml)
 SINGLE=1 npx vite build   # gói toàn bộ game thành một file HTML duy nhất
 ```
@@ -56,6 +57,20 @@ src/engine/   # engine thuần TypeScript, không phụ thuộc UI – có thể
 src/ui/       # React UI tiếng Anh (đăng nhập, sảnh, 12 trang đội, Game Master)
 tests/        # acceptance + Monte Carlo
 ```
+
+## Cân bằng entry mode
+
+Thí nghiệm có kiểm soát (`scripts/entry-bias.test.ts`): một công ty vào **một** nước bằng từng entry mode, mọi quyết định khác và đối thủ giữ nguyên, 8 seed. Trước khi cân chỉnh, Direct export trung bình 29.3 điểm còn Greenfield 11.7, và Acquisition không bao giờ thực hiện được vì bot không vay vốn. Sau cân chỉnh, các mode nằm trong khoảng 23.5–30.4 điểm, và mode tốt nhất phụ thuộc vào thị trường: Direct export ở CN, Acquisition ở JP/US, Franchising ở GB. Các điều chỉnh chính:
+
+- **JV**: đối tác chịu phần chi marketing và nhân sự tương ứng tỷ lệ sở hữu (hợp nhất theo tỷ lệ).
+- **Licensing / franchising**: bên nhận quyền tài trợ 40% marketing địa phương và đồng quảng bá, chi phí nhân sự thấp hơn.
+- **Indirect export**: nhà thương mại hỗ trợ một phần độ phủ và marketing, đổi lại thương hiệu xây chậm hơn.
+- **Sản xuất tại chỗ**: giá thành phụ thuộc chi phí lao động địa phương.
+- **Greenfield**: lead time 2 vòng, capex $1.7M, tự xây đội bán hàng (độ phủ ban đầu cao hơn).
+- **Acquisition**: giá $2.8M, thương hiệu mua lại khởi điểm thấp hơn, tài sản vô hình được khấu hao 5%/quý.
+- **Bot**: vay vốn để tài trợ các entry mode cần nhiều vốn.
+
+`tests/entry-balance.test.ts` chặn hồi quy: không mode nào được vượt trội hoặc không chơi được.
 
 ## Giới hạn của bản này
 

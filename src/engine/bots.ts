@@ -1,6 +1,6 @@
 // Bot teams (SRS §14): price leader, quality differentiator, focused niche, export-first,
 // JV diversifier, financially conservative. Bots only use the public decision interface.
-import { carryForward, currentVersion, validateDecision, vnAvailableBySku } from './decisions';
+import { carryForward, creditLimit, currentVersion, estimateSpend, validateDecision, vnAvailableBySku } from './decisions';
 import { FORMULA_PRESETS } from './product';
 import { MODE_RULES } from './scenario';
 import type {
@@ -227,6 +227,10 @@ export function makeBotDecision(game: GameState, co: CompanyState): Decision {
   // Finance
   d.newLoan = 0;
   if (co.ledger.cash < 900_000) d.newLoan = Math.min(1_000_000, Math.max(0, 1_000_000 + 0.5 * (co.ledger.cash + co.ledger.receivables + co.ledger.inventory + co.ledger.ppe) - co.ledger.debt));
+  // Finance capital-heavy entries (JV, greenfield, acquisition) with debt instead of dropping them.
+  const planned = sum(Object.values(estimateSpend(d, co, game)));
+  const shortfall = planned + 800_000 - co.ledger.cash;
+  if (shortfall > d.newLoan) d.newLoan = Math.min(creditLimit(co), Math.round(shortfall));
   d.debtRepayment = co.ledger.cash > 2_500_000 && co.ledger.debt > 0 ? Math.min(co.ledger.debt, 500_000) : 0;
   d.minCashReserve = 0;
   d.dividend = 0;

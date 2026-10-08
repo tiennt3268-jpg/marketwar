@@ -3,14 +3,15 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Market Wars – Vietnam Goes Global: international market-entry business simulation",
+  "description": "Market Wars \u2013 Vietnam Goes Global: international market-entry business simulation",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "montecarlo": "vitest run tests/montecarlo.test.ts"
+    "montecarlo": "vitest run tests/montecarlo.test.ts",
+    "bias": "vitest run --config scripts/vitest.config.ts"
   },
   "dependencies": {
     "react": "^19.2.0",

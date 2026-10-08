@@ -6,5 +6,5 @@ import { viteSingleFile } from 'vite-plugin-singlefile';
 export default defineConfig({
   plugins: process.env.SINGLE ? [react(), viteSingleFile()] : [react()],
   base: './',
-  test: { globals: true, environment: 'node' },
+  test: { globals: true, environment: 'node', include: ['tests/**/*.test.ts'] },
 });

@@ -229,7 +229,7 @@ export function estimateSpend(d: Decision, company: CompanyState, game: GameStat
       if (cd.entryMode === 'jv') capex *= cd.ownershipPct;
       if (cd.entryMode === 'acquisition') {
         const partner = sc.partners.find((x) => x.id === cd.partnerId);
-        capex = (partner?.feeOrMargin ?? 3_200_000) * m;
+        capex = (partner?.feeOrMargin ?? 2_800_000) * m;
       }
       entry += rule.setupCost * m + capex;
     }

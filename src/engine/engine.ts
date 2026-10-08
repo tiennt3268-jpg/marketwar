@@ -282,7 +282,7 @@ export function processRound(input: GameState): RoundOutput {
         B.post('entry-setup', `${c} ${rule.label} set-up (legal, partner search, registration)`, [{ account: 'Admin', debit: rule.setupCost * m }, { account: 'Cash', credit: rule.setupCost * m }]);
         let assets = 0;
         if (cd.entryMode === 'acquisition') {
-          const price = (partner?.feeOrMargin ?? 3_200_000) * m;
+          const price = (partner?.feeOrMargin ?? 2_800_000) * m;
           assets = price * 0.55;
           B.post('acquisition', `${c} acquisition of ${partner?.name}`, [{ account: 'PPE', debit: assets }, { account: 'Intangibles', debit: price - assets }, { account: 'Cash', credit: price }], 'investing');
         } else if (rule.capex > 0) {
@@ -296,7 +296,7 @@ export function processRound(input: GameState): RoundOutput {
         p.status = 'pending';
         p.activationRound = round + rule.leadRounds;
         p.localAssets = assets;
-        p.goodwill = cd.entryMode === 'acquisition' ? round2((partner?.feeOrMargin ?? 3_200_000) * m - assets) : 0;
+        p.goodwill = cd.entryMode === 'acquisition' ? round2((partner?.feeOrMargin ?? 2_800_000) * m - assets) : 0;
         msg(co.id, `${c}: ${rule.label} started – active from round ${p.activationRound}.`);
       } else if (cd.entryAction === 'exit' && (p.status === 'active' || p.status === 'pending')) {
         const localLots = co.inventory.filter((l) => l.location === c);
@@ -319,9 +319,10 @@ export function processRound(input: GameState): RoundOutput {
         const partner = sc.partners.find((x) => x.id === pp.partnerId);
         const m = SCALE_MULT[pp.scale];
         pp.status = 'active';
-        pp.coverage = clamp((partner?.coverageBoost ?? 0.15) * (0.6 + 0.4 * m), 0, rule.coverageMax);
+        pp.coverage = clamp((partner?.coverageBoost ?? (pp.mode === 'greenfield' ? 0.3 : 0.15)) * (0.6 + 0.4 * m), 0, rule.coverageMax);
         pp.localCapacity = Math.round(rule.localCapacity * m);
-        if (pp.mode === 'acquisition') { pp.brand = Math.max(pp.brand, 45); pp.awareness = Math.max(pp.awareness, 40); pp.trust = 60; }
+        if (pp.mode === 'acquisition') { pp.brand = Math.max(pp.brand, 28); pp.awareness = Math.max(pp.awareness, 20); pp.trust = 55; }
+        if (pp.mode === 'greenfield') { pp.awareness = Math.max(pp.awareness, 15); pp.trust = Math.max(pp.trust, 55); }
         msg(co.id, `${c}: ${rule.label} is now ACTIVE.`);
       }
       // Label localisation (one-off compliance cost per SKU & country)
@@ -408,7 +409,7 @@ export function processRound(input: GameState): RoundOutput {
         const q = Math.floor((cd.localProduction[s.id] ?? 0) * sc2);
         if (!v || q <= 0 || s.retired) continue;
         if (v.formula.dryingTech === 'freeze' && !co.hasFreezeTech) continue;
-        const unit = round2((estimateUnitCost(v.formula, coffeeIdx, v.attributes.defectRate * qcMult) * (0.75 + 0.25 * env[c].laborCostIndex / 100) + 0.15) * p.ownershipPct);
+        const unit = round2((estimateUnitCost(v.formula, coffeeIdx, v.attributes.defectRate * qcMult) * (0.85 + 0.15 * env[c].laborCostIndex / 100) + 0.08) * p.ownershipPct);
         B.post('local-production', `${c} local production ${q.toLocaleString()} × ${s.name}`, [{ account: 'Inventory', debit: q * unit }, { account: 'Cash', credit: q * unit }]);
         addLot(co, { location: c, skuId: s.id, versionId: v.id, qty: q, unitCost: unit });
       }
@@ -569,18 +570,21 @@ export function processRound(input: GameState): RoundOutput {
       const rule = MODE_RULES[p.mode!];
       const partner = sc.partners.find((x) => x.id === p.partnerId);
       const adTotal = sum(Object.values(cd.ads));
-      const mkt = adTotal + cd.localizationBudget + cd.tradeSpend + cd.serviceBudget;
+      // A JV partner funds its share of local marketing and staff (proportional consolidation);
+      // a licensee / franchisee co-funds 40% of local marketing.
+      const share = p.mode === 'jv' ? p.ownershipPct : 1;
+      const mkt = (adTotal + cd.localizationBudget + cd.tradeSpend + cd.serviceBudget) * share * (rule.licensed ? 0.6 : 1);
       B.post('marketing', `${c} advertising, localization, trade & service`, [{ account: 'Marketing', debit: mkt }, { account: 'Cash', credit: mkt }]);
-      const staff = COSTS.staff[cd.salaryPolicy] + cd.trainingBudget + rule.fixedCostPerRound * (p.mode === 'jv' ? p.ownershipPct : 1);
+      const staff = (COSTS.staff[cd.salaryPolicy] * rule.staffFactor + cd.trainingBudget + rule.fixedCostPerRound) * share;
       B.post('country-admin', `${c} local staff, training & ${rule.label} fixed costs`, [{ account: 'Admin', debit: staff }, { account: 'Cash', credit: staff }]);
       const anyLabel = Object.values(p.labelLocalized).some(Boolean) ? 0.15 : 0;
-      const loc = clamp(anyLabel + 0.85 * (Math.log(1 + cd.localizationBudget / 15_000) / Math.log(9)), 0, 1);
+      const loc = clamp(anyLabel + rule.localFit + 0.85 * (Math.log(1 + cd.localizationBudget / 15_000) / Math.log(9)), 0, 1);
       localization[co.id][c] = loc;
       let eff = 0;
       for (const ch of Object.keys(cd.ads) as (keyof typeof cd.ads)[]) {
         eff += cd.ads[ch] * e.channelEffect[ch] * (ch === 'offline' ? 1 : 0.3 + 0.7 * e.digitalPenetration / 100);
       }
-      eff *= (0.7 + 0.3 * loc) * rule.brandMult;
+      eff *= (0.7 + 0.3 * loc) * rule.brandMult * (1 + rule.partnerMarketing);
       effAdsMap[co.id][c] = eff;
       p.awareness = clamp(p.awareness * 0.7 + 16 * Math.log(1 + eff / 40_000), 0, 100);
       p.brand = clamp(p.brand * 0.9 + 4.5 * Math.log(1 + eff / 60_000) + 0.08 * (p.satisfaction - 50), 0, 100);
@@ -666,13 +670,13 @@ export function processRound(input: GameState): RoundOutput {
       const netLocal = (cd.prices[o.skuId] * (1 - discount)) / (1 + e.vat) * (1 - cd.retailerMargin);
       const fx = game.fx[e.currency];
       if (rule.licensed) {
-        const royaltyRate = partner?.feeOrMargin ?? 0.07;
+        const royaltyRate = partner?.feeOrMargin ?? 0.12;
         const royalty = (sold * netLocal * royaltyRate) / fx;
         B.post('royalty', `${c} ${rule.label} royalties on ${sold.toLocaleString()} licensee boxes`, [{ account: 'Cash', debit: royalty }, { account: 'RoyaltyIncome', credit: royalty }]);
         agg.rev += royalty;
         continue;
       }
-      const intermediary = p.mode === 'indirect_export' ? partner?.feeOrMargin ?? 0.2 : 0;
+      const intermediary = p.mode === 'indirect_export' ? partner?.feeOrMargin ?? 0.12 : 0;
       const own = p.mode === 'jv' ? p.ownershipPct : 1;
       const revLocal = sold * netLocal * (1 - intermediary) * own;
       const revUsd = revLocal / fx;
@@ -770,6 +774,15 @@ export function processRound(input: GameState): RoundOutput {
     if (dep > 0) {
       B.post('depreciation', 'Depreciation of plant & facilities', [{ account: 'Depreciation', debit: dep }, { account: 'PPE', credit: dep }]);
       for (const c of COUNTRIES) co.countries[c].localAssets = round2(co.countries[c].localAssets * 0.975);
+    }
+    // Amortisation of acquired brands & customer relationships (5%/quarter)
+    for (const c of COUNTRIES) {
+      const p = co.countries[c];
+      const am = round2(p.goodwill * 0.05);
+      if (am > 0 && co.ledger.intangibles >= am) {
+        B.post('amortisation', `${c} amortisation of acquired intangibles`, [{ account: 'Depreciation', debit: am }, { account: 'Intangibles', credit: am }]);
+        p.goodwill = round2(p.goodwill - am);
+      }
     }
     // Interest & VND debt revaluation
     for (const loan of co.loans) {

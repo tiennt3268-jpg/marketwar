@@ -6,7 +6,7 @@ import { computeAttributes, defaultFormula, validateFormula, FORMULA_PRESETS } f
 import { sanitizeDecision, validateDecision } from '../src/engine/decisions';
 import { validateEventTemplate } from '../src/engine/events';
 import { balanceGap, entryBalanced } from '../src/engine/ledger';
-import { defaultScenario } from '../src/engine/scenario';
+import { defaultScenario, MODE_RULES } from '../src/engine/scenario';
 import { COUNTRIES, type EventTemplate, type GameState } from '../src/engine/types';
 import { botGame, humanLikeGame, playHumanAsBot, runRounds } from './helpers';
 import { deepClone, sum } from '../src/engine/util';
@@ -106,7 +106,7 @@ test('T-09 greenfield cannot sell before activation', () => {
   const r1 = processRound(g);
   expect(r1.game.companies[0].countries.US.status).toBe('pending');
   g = r1.game;
-  for (let i = 0; i < 2; i++) {
+  for (let i = 0; i < MODE_RULES.greenfield.leadRounds - 1; i++) {
     g.decisions[id].countries.US.localProduction = { 'SKU-001': 10_000 };
     const out = processRound(g);
     const sales = out.result.countryResults.find((x) => x.companyId === id && x.country === 'US')!.salesBoxes;

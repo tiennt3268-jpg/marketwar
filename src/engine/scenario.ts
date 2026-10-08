@@ -153,12 +153,12 @@ export function defaultPartners(): PartnerDef[] {
   };
   for (const c of ['CN', 'JP', 'US', 'GB'] as CountryCode[]) {
     const n = names[c];
-    add(c, 'trading_house', n[0], 0.6, 0.12, 0.2, 'Trading house: takes title, 20% intermediary margin, low control.');
+    add(c, 'trading_house', n[0], 0.6, 0.15, 0.12, 'Trading house: takes title, 12% intermediary margin, low control.');
     add(c, 'distributor', n[1], 0.8, 0.2, 0.0, 'Exclusive distributor for direct exporting; retailer margin set by you.');
-    add(c, 'licensee', n[2], c === 'JP' ? 0.85 : 0.7, 0.3, 0.07, 'Licensee produces locally; you earn a 7% royalty on licensee net sales.');
-    add(c, 'franchisee', n[3], 0.75, 0.35, 0.1, 'Franchise network: 10% royalty, strong outlet coverage.');
+    add(c, 'licensee', n[2], c === 'JP' ? 0.85 : 0.7, 0.3, 0.12, 'Licensee produces locally and funds 40% of local marketing; you earn a 12% royalty on licensee net sales.');
+    add(c, 'franchisee', n[3], 0.75, 0.35, 0.14, 'Franchise network: 14% royalty, funds 40% of local marketing, strong outlet coverage.');
     add(c, 'jv_partner', n[4], 0.8, 0.35, 0.0, 'Local JV partner with plant site and retail relationships.');
-    add(c, 'acquisition_target', n[5], 0.75, 0.45, 3_200_000, 'Local instant-coffee maker for sale (base price, scaled by deal size).');
+    add(c, 'acquisition_target', n[5], 0.75, 0.35, 2_800_000, 'Local instant-coffee maker for sale (base price, scaled by deal size).');
   }
   return list;
 }
@@ -238,16 +238,19 @@ export interface ModeRule {
   needsFullOwnership: boolean;
   control: string;
   risk: string;
+  staffFactor: number; // share of local staff cost borne by the company (partners run operations)
+  partnerMarketing: number; // extra marketing reach contributed by the partner (fraction of own spend)
+  localFit: number; // localization/know-how a local partner or local operation brings (0..1)
 }
 
 export const MODE_RULES: Record<EntryMode, ModeRule> = {
-  indirect_export: { label: 'Indirect export', partnerKind: 'trading_house', setupCost: 25_000, capex: 0, leadRounds: 0, fixedCostPerRound: 5_000, coverageMax: 0.45, coverageMult: 0.7, brandMult: 0.6, exports: true, localProduction: false, licensed: false, localCapacity: 0, needsFullOwnership: false, control: 'Low', risk: 'Low' },
-  direct_export: { label: 'Direct export', partnerKind: 'distributor', setupCost: 90_000, capex: 0, leadRounds: 1, fixedCostPerRound: 20_000, coverageMax: 0.85, coverageMult: 1, brandMult: 1, exports: true, localProduction: false, licensed: false, localCapacity: 0, needsFullOwnership: false, control: 'Medium', risk: 'Low–Medium' },
-  licensing: { label: 'Licensing', partnerKind: 'licensee', setupCost: 40_000, capex: 0, leadRounds: 1, fixedCostPerRound: 5_000, coverageMax: 0.8, coverageMult: 0.9, brandMult: 0.7, exports: false, localProduction: false, licensed: true, localCapacity: 180_000, needsFullOwnership: false, control: 'Low', risk: 'Low (know-how leakage)' },
-  franchising: { label: 'Franchising', partnerKind: 'franchisee', setupCost: 60_000, capex: 0, leadRounds: 1, fixedCostPerRound: 10_000, coverageMax: 0.9, coverageMult: 1, brandMult: 0.85, exports: false, localProduction: false, licensed: true, localCapacity: 150_000, needsFullOwnership: false, control: 'Medium', risk: 'Low' },
-  jv: { label: 'Joint venture', partnerKind: 'jv_partner', setupCost: 60_000, capex: 1_200_000, leadRounds: 2, fixedCostPerRound: 40_000, coverageMax: 0.9, coverageMult: 1.05, brandMult: 1, exports: false, localProduction: true, licensed: false, localCapacity: 220_000, needsFullOwnership: false, control: 'Shared', risk: 'Medium' },
-  greenfield: { label: 'Greenfield FDI', partnerKind: null, setupCost: 100_000, capex: 2_500_000, leadRounds: 3, fixedCostPerRound: 50_000, coverageMax: 0.9, coverageMult: 1, brandMult: 1, exports: false, localProduction: true, licensed: false, localCapacity: 320_000, needsFullOwnership: true, control: 'Full', risk: 'High' },
-  acquisition: { label: 'Acquisition', partnerKind: 'acquisition_target', setupCost: 150_000, capex: 0, leadRounds: 1, fixedCostPerRound: 50_000, coverageMax: 0.92, coverageMult: 1.05, brandMult: 1, exports: false, localProduction: true, licensed: false, localCapacity: 250_000, needsFullOwnership: true, control: 'Full', risk: 'High' },
+  indirect_export: { label: 'Indirect export', partnerKind: 'trading_house', setupCost: 25_000, capex: 0, leadRounds: 0, fixedCostPerRound: 5_000, coverageMax: 0.6, coverageMult: 0.9, brandMult: 0.75, exports: true, localProduction: false, licensed: false, localCapacity: 0, needsFullOwnership: false, control: 'Low', risk: 'Low', staffFactor: 0.3, partnerMarketing: 0.2, localFit: 0.15 },
+  direct_export: { label: 'Direct export', partnerKind: 'distributor', setupCost: 90_000, capex: 0, leadRounds: 1, fixedCostPerRound: 20_000, coverageMax: 0.85, coverageMult: 1, brandMult: 1, exports: true, localProduction: false, licensed: false, localCapacity: 0, needsFullOwnership: false, control: 'Medium', risk: 'Low–Medium', staffFactor: 1, partnerMarketing: 0, localFit: 0 },
+  licensing: { label: 'Licensing', partnerKind: 'licensee', setupCost: 40_000, capex: 0, leadRounds: 1, fixedCostPerRound: 5_000, coverageMax: 0.8, coverageMult: 0.9, brandMult: 0.7, exports: false, localProduction: false, licensed: true, localCapacity: 200_000, needsFullOwnership: false, control: 'Low', risk: 'Low (know-how leakage)', staffFactor: 0.3, partnerMarketing: 0.6, localFit: 0.4 },
+  franchising: { label: 'Franchising', partnerKind: 'franchisee', setupCost: 60_000, capex: 0, leadRounds: 1, fixedCostPerRound: 10_000, coverageMax: 0.9, coverageMult: 1, brandMult: 0.85, exports: false, localProduction: false, licensed: true, localCapacity: 180_000, needsFullOwnership: false, control: 'Medium', risk: 'Low', staffFactor: 0.4, partnerMarketing: 0.5, localFit: 0.35 },
+  jv: { label: 'Joint venture', partnerKind: 'jv_partner', setupCost: 60_000, capex: 1_200_000, leadRounds: 2, fixedCostPerRound: 40_000, coverageMax: 0.9, coverageMult: 1.05, brandMult: 1, exports: false, localProduction: true, licensed: false, localCapacity: 220_000, needsFullOwnership: false, control: 'Shared', risk: 'Medium', staffFactor: 1, partnerMarketing: 0.2, localFit: 0.35 },
+  greenfield: { label: 'Greenfield FDI', partnerKind: null, setupCost: 100_000, capex: 1_700_000, leadRounds: 2, fixedCostPerRound: 35_000, coverageMax: 0.92, coverageMult: 1, brandMult: 1.05, exports: false, localProduction: true, licensed: false, localCapacity: 320_000, needsFullOwnership: true, control: 'Full', risk: 'High', staffFactor: 1, partnerMarketing: 0, localFit: 0.2 },
+  acquisition: { label: 'Acquisition', partnerKind: 'acquisition_target', setupCost: 120_000, capex: 0, leadRounds: 1, fixedCostPerRound: 45_000, coverageMax: 0.92, coverageMult: 1.05, brandMult: 1, exports: false, localProduction: true, licensed: false, localCapacity: 250_000, needsFullOwnership: true, control: 'Full', risk: 'High', staffFactor: 1, partnerMarketing: 0.1, localFit: 0.25 },
 };
 
 export const SCALE_MULT: Record<EntryScale, number> = { pilot: 0.5, normal: 1, aggressive: 1.6 };
