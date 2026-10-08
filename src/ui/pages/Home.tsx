@@ -24,6 +24,7 @@ export default function Home({ onOpen, theme, setTheme }: { onOpen: (g: GameStat
   ]);
   const [saved, setSaved] = useState(listSaved());
   const [importError, setImportError] = useState('');
+  const [confirmDel, setConfirmDel] = useState<string | null>(null);
 
   const setTeam = (i: number, patch: Partial<TeamRow>) => setTeams(teams.map((t, j) => (j === i ? { ...t, ...patch } : t)));
 
@@ -115,7 +116,9 @@ export default function Home({ onOpen, theme, setTheme }: { onOpen: (g: GameStat
                     </div>
                     <div className="row">
                       <button className="btn sm primary" onClick={() => { const g = loadGame(s.id); if (g) onOpen(g); }}>Mở</button>
-                      <button className="btn sm danger" onClick={() => { if (confirm(`Xoá "${s.name}"?`)) { deleteGame(s.id); setSaved(listSaved()); } }}>Xoá</button>
+                      {confirmDel === s.id
+                        ? <button className="btn sm danger" onClick={() => { deleteGame(s.id); setSaved(listSaved()); setConfirmDel(null); }}>Xác nhận xoá</button>
+                        : <button className="btn sm danger" onClick={() => setConfirmDel(s.id)}>Xoá</button>}
                     </div>
                   </div>
                 ))}

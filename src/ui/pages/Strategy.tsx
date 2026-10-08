@@ -52,7 +52,7 @@ export default function Strategy() {
           <div className="row" style={{ marginTop: 8 }}>
             {cd.entryAction === 'exit'
               ? <><Badge tone="bad">Sẽ rút khỏi thị trường cuối vòng này</Badge><button className="btn sm" disabled={readOnly} onClick={() => update((x) => { x.countries[c].entryAction = 'hold'; })}>Huỷ</button></>
-              : <button className="btn sm danger" disabled={readOnly} onClick={() => confirm('Rút khỏi thị trường? Tồn kho chỉ thu hồi ~30%, tài sản ~50%.') && update((x) => { x.countries[c].entryAction = 'exit'; })}>Rút khỏi thị trường…</button>}
+              : <button className="btn sm danger" disabled={readOnly} title="Tồn kho chỉ thu hồi ~30%, tài sản ~50%" onClick={() => update((x) => { x.countries[c].entryAction = 'exit'; })}>Rút khỏi thị trường (thu hồi ~30% tồn kho, ~50% tài sản)</button>}
           </div>
         </Card>
       ) : (
