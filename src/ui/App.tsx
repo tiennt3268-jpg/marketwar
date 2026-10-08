@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react';
+import { useCallback, useMemo, useState, type ReactElement } from 'react';
 import type { Decision, GameState } from '../engine/types';
 import { carryForward } from '../engine/decisions';
 import { isScored, totalRounds } from '../engine/engine';
 import { Ctx, type GameCtx, type Viewer } from './context';
-import { getPref, saveGame, setPref } from './store';
+import { saveGame } from './store';
 import { Badge } from './components';
 import Home from './pages/Home';
 import Overview from './pages/Overview';
@@ -21,34 +21,28 @@ import History from './pages/History';
 import GameMaster from './pages/GameMaster';
 import Guide from './pages/Guide';
 
-const TEAM_NAV: { group: string; items: { id: string; label: string; icon: string }[] }[] = [
-  { group: 'Điều hành', items: [{ id: 'overview', label: 'Tổng quan', icon: '🏠' }, { id: 'intelligence', label: 'Thông tin thị trường', icon: '🌏' }] },
+const TEAM_NAV: { group: string; items: { id: string; label: string }[] }[] = [
+  { group: 'Điều hành', items: [{ id: 'overview', label: 'Tổng quan' }, { id: 'intelligence', label: 'Thông tin thị trường' }] },
   { group: 'Quyết định', items: [
-    { id: 'product', label: 'Product Lab', icon: '🧪' }, { id: 'strategy', label: 'Chiến lược & Thâm nhập', icon: '🧭' },
-    { id: 'marketing', label: 'Marketing & Giá', icon: '📣' }, { id: 'operations', label: 'Sản xuất & Logistics', icon: '🏭' },
-    { id: 'treasury', label: 'Tài chính & Rủi ro', icon: '🏦' }, { id: 'submit', label: 'Kiểm tra & Nộp', icon: '✅' },
+    { id: 'product', label: 'Product Lab' }, { id: 'strategy', label: 'Chiến lược & Thâm nhập' },
+    { id: 'marketing', label: 'Marketing & Giá' }, { id: 'operations', label: 'Sản xuất & Logistics' },
+    { id: 'treasury', label: 'Tài chính & Rủi ro' }, { id: 'submit', label: 'Kiểm tra & Nộp' },
   ] },
   { group: 'Kết quả', items: [
-    { id: 'reports', label: 'Thị phần & Định vị', icon: '📊' }, { id: 'finance', label: 'Báo cáo tài chính', icon: '📒' },
-    { id: 'leaderboard', label: 'Bảng xếp hạng', icon: '🏆' }, { id: 'history', label: 'Lịch sử & Nhật ký', icon: '🕘' },
+    { id: 'reports', label: 'Thị phần & Định vị' }, { id: 'finance', label: 'Báo cáo tài chính' },
+    { id: 'leaderboard', label: 'Bảng xếp hạng' }, { id: 'history', label: 'Lịch sử & Nhật ký' },
   ] },
-  { group: 'Trợ giúp', items: [{ id: 'guide', label: 'Hướng dẫn chơi', icon: '📘' }] },
+  { group: 'Trợ giúp', items: [{ id: 'guide', label: 'Hướng dẫn chơi' }] },
 ];
-const GM_NAV = [{ group: 'Game Master', items: [{ id: 'gm', label: 'Điều khiển vòng', icon: '🎛️' }, { id: 'reports', label: 'Thị phần & Định vị', icon: '📊' }, { id: 'leaderboard', label: 'Bảng xếp hạng', icon: '🏆' }, { id: 'guide', label: 'Hướng dẫn', icon: '📘' }] }];
+const GM_NAV = [{ group: 'Game Master', items: [{ id: 'gm', label: 'Điều khiển vòng' }, { id: 'reports', label: 'Thị phần & Định vị' }, { id: 'leaderboard', label: 'Bảng xếp hạng' }, { id: 'guide', label: 'Hướng dẫn' }] }];
 
 export default function App() {
   const [game, setGameState] = useState<GameState | null>(null);
   const [viewer, setViewer] = useState<Viewer>({ role: 'gm' });
   const [page, setPage] = useState('overview');
   const [menuOpen, setMenuOpen] = useState(false);
-  const [theme, setTheme] = useState(getPref('theme', 'auto'));
   const [pinPrompt, setPinPrompt] = useState<{ companyId: string; value: string; error?: string } | null>(null);
 
-  useEffect(() => {
-    if (theme === 'auto') document.documentElement.removeAttribute('data-theme');
-    else document.documentElement.setAttribute('data-theme', theme);
-    setPref('theme', theme);
-  }, [theme]);
 
   const setGame = useCallback((g: GameState) => {
     setGameState(g);
@@ -80,7 +74,7 @@ export default function App() {
     };
   }, [game, viewer, setGame]);
 
-  if (!game || !ctx) return <Home onOpen={openGame} theme={theme} setTheme={setTheme} />;
+  if (!game || !ctx) return <Home onOpen={openGame} />;
 
   const switchViewer = (val: string) => {
     if (val === 'gm') { setViewer({ role: 'gm' }); setPage('gm'); return; }
@@ -117,41 +111,40 @@ export default function App() {
     <Ctx.Provider value={ctx}>
       <div className="app">
         <aside className={`sidebar ${menuOpen ? 'open' : ''}`}>
-          <div className="brand"><div className="brand-logo">☕</div><div>MARKET WARS<small>Vietnam Goes Global</small></div></div>
+          <div className="brand"><div>Market Wars<small>Vietnam Goes Global</small></div></div>
           {nav.map((g) => (
             <div key={g.group}>
               <div className="nav-group">{g.group}</div>
               <nav className="nav">
                 {g.items.map((it) => (
-                  <button key={it.id} className={page === it.id ? 'active' : ''} onClick={() => ctx.go(it.id)}><span aria-hidden>{it.icon}</span>{it.label}</button>
+                  <button key={it.id} className={page === it.id ? 'active' : ''} onClick={() => ctx.go(it.id)}>{it.label}</button>
                 ))}
               </nav>
             </div>
           ))}
           <div className="nav-group">Trò chơi</div>
           <nav className="nav">
-            <button onClick={() => { setGameState(null); }}>🚪 Thoát về sảnh</button>
+            <button onClick={() => { setGameState(null); }}>Thoát về sảnh</button>
           </nav>
         </aside>
         <div className="main" onClick={() => menuOpen && setMenuOpen(false)}>
           <header className="topbar">
             <div className="row">
-              <button className="btn sm menu-toggle" onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }} aria-label="Menu">☰</button>
+              <button className="btn sm menu-toggle" onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }} aria-label="Menu">Menu</button>
               <strong>{game.name}</strong>
               <Badge tone={scored ? 'accent' : 'info'}>{roundLabel}</Badge>
               <Badge tone={game.phase === 'OPEN' ? 'good' : game.phase === 'FINISHED' ? 'warn' : undefined}>{game.phase}</Badge>
               <span className="small muted">Đã nộp {submittedCount}/{game.companies.length}</span>
-              {game.round <= totalRounds(game) && game.activeEvents.length > 0 && <Badge tone="warn">⚡ {game.activeEvents.length} sự kiện</Badge>}
+              {game.round <= totalRounds(game) && game.activeEvents.length > 0 && <Badge tone="warn">{game.activeEvents.length} sự kiện</Badge>}
             </div>
             <div className="row">
               <label className="row small">
                 <span className="muted">Đang xem:</span>
                 <select value={viewer.role === 'gm' ? 'gm' : viewer.companyId} onChange={(e) => switchViewer(e.target.value)} style={{ width: 'auto' }}>
-                  <option value="gm">🎛️ Game Master</option>
-                  {game.companies.map((c) => <option key={c.id} value={c.id}>{c.isBot ? '🤖' : '👥'} {c.name}{game.pins?.[c.id] ? ' 🔒' : ''}</option>)}
+                  <option value="gm">Game Master</option>
+                  {game.companies.map((c) => <option key={c.id} value={c.id}>{c.isBot ? 'Bot ·' : 'Đội ·'} {c.name}{game.pins?.[c.id] ? ' ' : ''}</option>)}
                 </select>
               </label>
-              <button className="btn sm ghost" onClick={() => setTheme(theme === 'dark' ? 'light' : theme === 'light' ? 'auto' : 'dark')} title="Giao diện sáng/tối">{theme === 'dark' ? '🌙' : theme === 'light' ? '☀️' : '🌓'}</button>
             </div>
           </header>
           <main className="content">{body}</main>

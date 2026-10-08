@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useGame } from '../context';
-import { Badge, Card, COUNTRY_FLAG, COUNTRY_VI, Empty, SEGMENT_VI, Tabs } from '../components';
+import { Badge, Card, COUNTRY_VI, Empty, SEGMENT_VI, Tabs } from '../components';
 import { BarChart, PositioningMap } from '../charts';
 import { COUNTRIES, SEGMENTS, type CountryCode } from '../../engine/types';
 import { fmtK, fmtNum, fmtPct, sum } from '../../engine/util';
@@ -35,13 +35,13 @@ export default function Reports() {
         </label>
       </div>
       {practice && <div className="alert info small" style={{ marginBottom: 12 }}>Đây là vòng thử (practice) – các công ty đã được reset sau vòng thử.</div>}
-      {r.events.length > 0 && <div className="alert warn small" style={{ marginBottom: 12 }}>⚡ Sự kiện vòng này: {r.events.map((e) => `${e.name}${e.country ? ` (${e.country})` : ''}`).join(' · ')}</div>}
+      {r.events.length > 0 && <div className="alert warn small" style={{ marginBottom: 12 }}>Sự kiện vòng này: {r.events.map((e) => `${e.name}${e.country ? ` (${e.country})` : ''}`).join(' · ')}</div>}
 
       <Card title="Thị phần toàn cầu (theo sản lượng)">
         <BarChart rows={world.sort((a, b) => b.boxes - a.boxes).map((w) => ({ label: w.co.name, value: worldTotal ? w.boxes / worldTotal : 0, color: w.co.color, note: `${fmtNum(w.boxes)} hộp` }))} format={(v) => fmtPct(v)} />
       </Card>
 
-      <div style={{ marginTop: 14 }}><Tabs value={c} onChange={setC} items={COUNTRIES.map((x) => ({ value: x, label: `${COUNTRY_FLAG[x]} ${COUNTRY_VI[x]}` }))} /></div>
+      <div style={{ marginTop: 14 }}><Tabs value={c} onChange={setC} items={COUNTRIES.map((x) => ({ value: x, label: `$${COUNTRY_VI[x]}` }))} /></div>
       <div className="grid g2" style={{ alignItems: 'start' }}>
         <Card title={`Perceptual Positioning Map – ${COUNTRY_VI[c]}`}>
           {pos.length === 0 ? <p className="muted small">Không doanh nghiệp nào bán tại đây vòng này.</p> : (

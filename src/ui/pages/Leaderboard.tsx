@@ -17,7 +17,7 @@ export default function Leaderboard() {
       <div className="section-title"><div><h1>Bảng xếp hạng</h1><div className="muted small">Điểm tổng hợp chuẩn hoá theo ngưỡng (0–100 mỗi tiêu chí): lợi nhuận luỹ kế {Math.round(w.profit * 100)}%, thị phần toàn cầu {Math.round(w.share * 100)}%, ROIC {Math.round(w.roic * 100)}%, thương hiệu TB 4 nước {Math.round(w.brand * 100)}%, khả năng chống chịu {Math.round(w.resilience * 100)}%.</div></div></div>
       {game.phase === 'FINISHED' && (() => {
         const win = game.companies.find((c) => c.id === last.leaderboard[0].companyId)!;
-        return <div className="alert good" style={{ marginBottom: 14 }}>🏆 Trò chơi kết thúc! Nhà vô địch: <b>{win.name}</b> với {last.leaderboard[0].score.toFixed(1)} điểm.</div>;
+        return <div className="alert good" style={{ marginBottom: 14 }}>Trò chơi kết thúc! Nhà vô địch: <b>{win.name}</b> với {last.leaderboard[0].score.toFixed(1)} điểm.</div>;
       })()}
       <Card>
         <div className="table-wrap"><table>

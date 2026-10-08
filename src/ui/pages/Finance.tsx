@@ -20,7 +20,7 @@ export default function Finance() {
   return (
     <div>
       <div className="section-title"><div><h1>Báo cáo tài chính hợp nhất</h1><div className="muted small">Đơn vị: USD (đồng tiền báo cáo). Sổ kép: mọi bút toán cân Nợ = Có; bảng cân đối luôn cân.</div></div>
-        <button className="btn sm" onClick={() => downloadText(`${co.name}-financials.csv`, toCsv(hist, label), 'text/csv')}>⬇ Xuất CSV</button>
+        <button className="btn sm" onClick={() => downloadText(`${co.name}-financials.csv`, toCsv(hist, label), 'text/csv')}>Xuất CSV</button>
       </div>
       <Tabs value={tab} onChange={setTab} items={[{ value: 'is', label: 'Kết quả kinh doanh' }, { value: 'bs', label: 'Cân đối kế toán' }, { value: 'cf', label: 'Lưu chuyển tiền tệ' }, { value: 'gl', label: 'Sổ nhật ký (vòng gần nhất)' }]} />
       <Card>

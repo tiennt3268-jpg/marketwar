@@ -5,7 +5,7 @@ export default function Guide() {
     <div className="stack">
       <h1>Hướng dẫn chơi Market Wars</h1>
       <Card title="1. Mục tiêu">
-        <p>Bạn điều hành một doanh nghiệp cà phê hòa tan Việt Nam (vốn $5M, nhà máy 300.000 hộp/quý, thương hiệu 20/100). Mọi đội xuất phát giống hệt nhau và cạnh tranh trực tiếp tại 🇨🇳 Trung Quốc, 🇯🇵 Nhật Bản, 🇺🇸 Hoa Kỳ, 🇬🇧 Anh. Điểm cuối cùng = Lợi nhuận luỹ kế 30% · Thị phần toàn cầu 25% · ROIC 20% · Thương hiệu 15% · Khả năng chống chịu 10%.</p>
+        <p>Bạn điều hành một doanh nghiệp cà phê hòa tan Việt Nam (vốn $5M, nhà máy 300.000 hộp/quý, thương hiệu 20/100). Mọi đội xuất phát giống hệt nhau và cạnh tranh trực tiếp tại Trung Quốc, Nhật Bản, Hoa Kỳ, Anh. Điểm cuối cùng = Lợi nhuận luỹ kế 30% · Thị phần toàn cầu 25% · ROIC 20% · Thương hiệu 15% · Khả năng chống chịu 10%.</p>
         <p className="muted">Nguyên tắc cốt lõi: <b>bạn chọn hành động, không chọn kết quả.</b> Chất lượng, chất lượng cảm nhận, định vị (Premium/Value/Economy/Overpriced/Niche), thị phần, lợi nhuận đều do engine tính.</p>
       </Card>
       <div className="grid g2">

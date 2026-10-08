@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useGame } from '../context';
-import { Badge, Card, Check, COUNTRY_FLAG, COUNTRY_VI, NumField, SelectField, Tabs } from '../components';
+import { Badge, Card, Check, COUNTRY_VI, NumField, SelectField, Tabs } from '../components';
 import { processRound, refreshEnvironment, isScored, totalRounds } from '../../engine/engine';
 import { VARIABLE_REGISTRY, validateEventTemplate } from '../../engine/events';
 import { COUNTRIES, type CountryCode, type EventEffect, type EventTemplate, type GameState } from '../../engine/types';
@@ -41,8 +41,8 @@ export default function GameMaster() {
     const again = processRound(lastInput).result;
     const orig = game.results.find((r) => r.round === again.round);
     setReplay(orig && orig.outputHash === again.outputHash && orig.inputHash === again.inputHash
-      ? `✔ Tái lập thành công: input ${again.inputHash} → output ${again.outputHash}`
-      : `✘ Khác biệt! ${orig?.outputHash} vs ${again.outputHash}`);
+      ? `Tái lập thành công: input ${again.inputHash} → output ${again.outputHash}`
+      : `Khác biệt! ${orig?.outputHash} vs ${again.outputHash}`);
   };
 
   const pending = game.companies.filter((c) => !c.isBot && c.status === 'active' && !game.decisions[c.id]?.submitted);
@@ -51,9 +51,9 @@ export default function GameMaster() {
   return (
     <div>
       <div className="section-title"><div><h1>Game Master Studio</h1><div className="muted small">Điều khiển vòng, tham số kịch bản, sự kiện và chấm điểm học thuật. Mọi thay đổi được ghi audit; không thể sửa vòng đã đóng.</div></div>
-        <button className="btn sm" onClick={() => downloadText(`${game.name.replace(/\W+/g, '_')}-R${game.round}.json`, JSON.stringify(game))}>⬇ Xuất file save</button>
+        <button className="btn sm" onClick={() => downloadText(`${game.name.replace(/\W+/g, '_')}-R${game.round}.json`, JSON.stringify(game))}>Xuất file save</button>
       </div>
-      <Tabs value={tab} onChange={setTab} items={[{ value: 'rounds', label: '🎛️ Vòng chơi' }, { value: 'scenario', label: '🌐 Tham số quốc gia' }, { value: 'events', label: '⚡ Sự kiện' }, { value: 'grading', label: '🎓 Học thuật' }]} />
+      <Tabs value={tab} onChange={setTab} items={[{ value: 'rounds', label: 'Vòng chơi' }, { value: 'scenario', label: 'Tham số quốc gia' }, { value: 'events', label: 'Sự kiện' }, { value: 'grading', label: 'Học thuật' }]} />
 
       {tab === 'rounds' && (
         <div className="grid g2" style={{ alignItems: 'start' }}>
@@ -65,7 +65,7 @@ export default function GameMaster() {
                 return (
                   <tr key={c.id}>
                     <td><span className="inline"><i className="dot" style={{ background: c.color }} />{c.name}</span></td>
-                    <td>{c.isBot ? '🤖 Bot' : '👥 Người'}</td>
+                    <td>{c.isBot ? 'Bot' : 'Người chơi'}</td>
                     <td>{c.status === 'bankrupt' ? <Badge tone="bad">Phá sản</Badge> : c.isBot ? <Badge tone="info">Tự động</Badge> : d?.submitted ? <Badge tone="good">Đã nộp</Badge> : <Badge tone="warn">Chưa nộp</Badge>}</td>
                     <td className="num">{d?.revision ?? 0}</td>
                   </tr>
@@ -75,7 +75,7 @@ export default function GameMaster() {
             {game.phase !== 'FINISHED' && (
               <div className="stack" style={{ marginTop: 12 }}>
                 {pending.length > 0 && <div className="alert warn small">{pending.length} đội chưa nộp – nếu xử lý ngay, hệ thống dùng bản nháp hiện tại của họ (carry-forward an toàn; các hành động không hợp lệ bị huỷ).</div>}
-                <button className="btn primary" disabled={busy} onClick={run}>{busy ? '⏳ Đang xử lý…' : `🔒 Khoá & xử lý vòng ${game.round}`}</button>
+                <button className="btn primary" disabled={busy} onClick={run}>{busy ? '⏳ Đang xử lý…' : `Khoá & xử lý vòng ${game.round}`}</button>
                 {error && <div className="alert bad small">{error}</div>}
               </div>
             )}
@@ -86,10 +86,10 @@ export default function GameMaster() {
                 <div>Vòng <b>{last.round}</b> · engine v{last.engineVersion} · seed {last.seed}</div>
                 <div className="mono">input hash {last.inputHash}<br />output hash {last.outputHash}</div>
                 <div>Sự kiện: {last.events.length ? last.events.map((e) => `${e.name}${e.country ? ` (${e.country})` : ''}`).join(', ') : 'không có'}</div>
-                <div>Bút toán: {fmtNum(last.journal.length)} · tất cả cân Nợ = Có · bảng cân đối mọi công ty cân ✔</div>
-                <div>Tổng bán: {COUNTRIES.map((c) => `${COUNTRY_FLAG[c]} ${fmtNum(last.countryResults.filter((r) => r.country === c).reduce((a, r) => a + r.salesBoxes, 0))}`).join(' · ')}</div>
-                {lastInput && <div className="row"><button className="btn sm" onClick={verifyReplay}>🔁 Chạy lại để kiểm tra tính tái lập (T-22)</button></div>}
-                {replay && <div className={`alert small ${replay.startsWith('✔') ? 'good' : 'bad'}`}>{replay}</div>}
+                <div>Bút toán: {fmtNum(last.journal.length)} · tất cả cân Nợ = Có · bảng cân đối mọi công ty cân </div>
+                <div>Tổng bán: {COUNTRIES.map((c) => `$${fmtNum(last.countryResults.filter((r) => r.country === c).reduce((a, r) => a + r.salesBoxes, 0))}`).join(' · ')}</div>
+                {lastInput && <div className="row"><button className="btn sm" onClick={verifyReplay}>Chạy lại để kiểm tra tính tái lập (T-22)</button></div>}
+                {replay && <div className={`alert small ${replay.startsWith('') ? 'good' : 'bad'}`}>{replay}</div>}
               </div>
             )}
           </Card>
@@ -125,7 +125,7 @@ function ScenarioEditor({ setGame }: { setGame: (g: GameState, msg: string) => v
   const current = (key: string) => key === 'fxRate' ? game.fx[base.currency] : key === 'marketSizeBoxes' ? Object.values(game.marketSize[c]).reduce((a, b) => a + b, 0) : (base as unknown as Record<string, number>)[key];
   return (
     <div className="stack">
-      <Tabs value={c} onChange={setC} items={COUNTRIES.map((x) => ({ value: x, label: `${COUNTRY_FLAG[x]} ${COUNTRY_VI[x]}` }))} />
+      <Tabs value={c} onChange={setC} items={COUNTRIES.map((x) => ({ value: x, label: `$${COUNTRY_VI[x]}` }))} />
       <Card title={`Biến môi trường – ${COUNTRY_VI[c]} (scenario v${game.scenario.version})`}>
         <p className="small muted">Thay đổi áp dụng từ vòng đang mở trở đi; giá trị bị chặn trong khoảng của registry. Giá trị hiển thị là giá trị gốc (trước tác động sự kiện).</p>
         <div className="form-grid">
@@ -174,7 +174,7 @@ function EventsEditor({ setGame }: { setGame: (g: GameState, msg: string) => voi
             <tr key={e.id}>
               <td><input type="checkbox" checked={e.enabled} onChange={(x) => patchEvent(e.id, { enabled: x.target.checked })} aria-label="Bật" /></td>
               <td style={{ whiteSpace: 'normal', minWidth: 180 }}><b>{e.name}</b><div className="small muted">{e.description}</div></td>
-              <td>{e.scope === 'global' ? '🌐' : `${COUNTRY_FLAG[e.country!]} ${e.country}`}</td>
+              <td>{e.scope === 'global' ? '' : `$${e.country}`}</td>
               <td><select value={e.trigger} onChange={(x) => patchEvent(e.id, { trigger: x.target.value as EventTemplate['trigger'] })}><option value="fixed">Cố định</option><option value="probabilistic">Xác suất</option></select></td>
               <td className="num"><input type="number" style={{ width: 60 }} value={e.round} min={1} onChange={(x) => patchEvent(e.id, { round: Math.max(1, Math.floor(+x.target.value)) })} /></td>
               <td className="num"><input type="number" style={{ width: 70 }} step={0.01} min={0} max={1} value={e.probability} onChange={(x) => patchEvent(e.id, { probability: Math.min(1, Math.max(0, +x.target.value)) })} /></td>
@@ -190,7 +190,7 @@ function EventsEditor({ setGame }: { setGame: (g: GameState, msg: string) => voi
           <label className="field"><span>Tên</span><input type="text" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} /></label>
           <label className="field"><span>Mô tả</span><input type="text" value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} /></label>
           <SelectField label="Phạm vi" value={draft.scope === 'global' ? 'global' : draft.country!} onChange={(v) => setDraft(v === 'global' ? { ...draft, scope: 'global', country: undefined, effects: [{ variable: 'coffeePriceIndex', op: 'MULTIPLY', value: 1.2 }] } : { ...draft, scope: 'country', country: v as CountryCode })}
-            options={[{ value: 'global', label: '🌐 Toàn cầu' }, ...COUNTRIES.map((c) => ({ value: c, label: `${COUNTRY_FLAG[c]} ${c}` }))]} />
+            options={[{ value: 'global', label: 'Toàn cầu' }, ...COUNTRIES.map((c) => ({ value: c, label: `$${c}` }))]} />
           <SelectField label="Kích hoạt" value={draft.trigger} onChange={(v) => setDraft({ ...draft, trigger: v as EventTemplate['trigger'] })} options={[{ value: 'fixed', label: 'Cố định tại vòng' }, { value: 'probabilistic', label: 'Theo xác suất' }]} />
           <NumField label="Vòng" value={draft.round} step={1} min={game.round} onChange={(v) => setDraft({ ...draft, round: Math.floor(v) })} hint="Không thể đặt cho vòng đã đóng" />
           <NumField label="Xác suất" value={draft.probability} step={0.05} min={0} max={1} onChange={(v) => setDraft({ ...draft, probability: v })} />
@@ -207,7 +207,7 @@ function EventsEditor({ setGame }: { setGame: (g: GameState, msg: string) => voi
               {['SET', 'ADD', 'MULTIPLY', 'CAP', 'FLOOR'].map((o) => <option key={o}>{o}</option>)}
             </select>
             <input type="number" style={{ width: 110 }} step={0.01} value={f.value} onChange={(e) => setDraft({ ...draft, effects: draft.effects.map((x, j) => (j === i ? { ...x, value: +e.target.value } : x)) })} />
-            <button className="btn sm ghost" onClick={() => setDraft({ ...draft, effects: draft.effects.filter((_, j) => j !== i) })}>✕</button>
+            <button className="btn sm ghost" onClick={() => setDraft({ ...draft, effects: draft.effects.filter((_, j) => j !== i) })}>Xoá</button>
           </div>
         ))}
         <div className="row">

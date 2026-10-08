@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTeam } from '../context';
-import { AttrRow, Badge, Card, Check, COUNTRY_FLAG, NumField, RangeField, SelectField, SEGMENT_VI } from '../components';
+import { AttrRow, Badge, Card, Check, NumField, RangeField, SelectField, SEGMENT_VI } from '../components';
 import { FORMULA_PRESETS, balanceFormula, boxGrams, computeAttributes, formulaMass, sameFormula, validateFormula } from '../../engine/product';
 import { productFit } from '../../engine/market';
 import { COSTS, latestVersion } from '../../engine/decisions';
@@ -45,7 +45,7 @@ export default function ProductLab() {
     for (const s of rep.segments) {
       const segDef = game.env[c].segments.find((x) => x.id === s.id)!;
       const pseudo: SegmentDef = { ...segDef, ideal: s.ideal };
-      fitRows.push({ country: `${COUNTRY_FLAG[c]} ${c}`, seg: SEGMENT_VI[s.id], fit: productFit(attrs, pseudo) });
+      fitRows.push({ country: `$${c}`, seg: SEGMENT_VI[s.id], fit: productFit(attrs, pseudo) });
     }
   }
 
@@ -54,7 +54,7 @@ export default function ProductLab() {
       <div className="section-title">
         <div><h1>Product Formulation Laboratory</h1><div className="muted small">Bạn chỉnh đầu vào (BOM, công nghệ, nguyên liệu, bao bì) – engine suy ra hương vị, chất lượng, tỷ lệ lỗi và giá thành.</div></div>
         <div className="row">
-          {d.skus.map((s) => <button key={s.skuId} className={`btn sm ${s.skuId === sd.skuId ? 'primary' : ''}`} onClick={() => setSel(s.skuId)}>{s.retire ? '🗄️ ' : ''}{s.name}</button>)}
+          {d.skus.map((s) => <button key={s.skuId} className={`btn sm ${s.skuId === sd.skuId ? 'primary' : ''}`} onClick={() => setSel(s.skuId)}>{s.retire ? '' : ''}{s.name}</button>)}
           <button className="btn sm" disabled={readOnly || d.skus.filter((s) => !s.retire).length >= COSTS.maxSkus} onClick={addSku}>+ SKU mới (${fmtNum(COSTS.newSkuFee)})</button>
         </div>
       </div>
@@ -74,7 +74,7 @@ export default function ProductLab() {
               <SelectField<Roast> label="Mức rang" value={f.roast} disabled={readOnly} onChange={(v) => setF({ roast: v })}
                 options={[{ value: 'light', label: 'Light' }, { value: 'medium', label: 'Medium' }, { value: 'dark', label: 'Dark' }]} />
               <SelectField<DryingTech> label="Công nghệ sấy" value={f.dryingTech} disabled={readOnly} onChange={(v) => setF({ dryingTech: v })}
-                hint={f.dryingTech === 'freeze' && !co.hasFreezeTech ? '⚠ Chưa có công nghệ freeze-drying: phải thuê gia công (outsourcing) hoặc đầu tư Innovation.' : undefined}
+                hint={f.dryingTech === 'freeze' && !co.hasFreezeTech ? 'Chưa có công nghệ freeze-drying: phải thuê gia công (outsourcing) hoặc đầu tư Innovation.' : undefined}
                 options={[{ value: 'spray', label: 'Spray drying – chi phí thấp' }, { value: 'freeze', label: `Freeze drying – cao cấp${co.hasFreezeTech ? '' : ' (cần công nghệ)'}` }]} />
               <SelectField<Grade> label="Cấp nguyên liệu" value={f.grade} disabled={readOnly} onChange={(v) => setF({ grade: v })}
                 options={[{ value: 'standard', label: 'Standard' }, { value: 'select', label: 'Select (+15% giá hạt)' }, { value: 'premium', label: 'Premium (+35%, truy xuất nguồn gốc)' }]} />

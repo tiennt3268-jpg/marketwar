@@ -1,5 +1,5 @@
 import { useTeam } from '../context';
-import { Badge, Card, COUNTRY_FLAG } from '../components';
+import { Badge, Card } from '../components';
 import { estimateSpend, latestVersion, sanitizeDecision, validateDecision } from '../../engine/decisions';
 import { sameFormula } from '../../engine/product';
 import { MODE_RULES } from '../../engine/scenario';
@@ -26,8 +26,8 @@ export default function Submit() {
   }
   for (const c of COUNTRIES) {
     const cd = clean.countries[c];
-    if (cd.entryAction === 'enter') changes.push(`${COUNTRY_FLAG[c]} Thâm nhập ${c} bằng ${MODE_RULES[cd.entryMode].label} (${cd.entryScale})`);
-    if (cd.entryAction === 'exit') changes.push(`${COUNTRY_FLAG[c]} Rút khỏi ${c}`);
+    if (cd.entryAction === 'enter') changes.push(`$Thâm nhập ${c} bằng ${MODE_RULES[cd.entryMode].label} (${cd.entryScale})`);
+    if (cd.entryAction === 'exit') changes.push(`$Rút khỏi ${c}`);
   }
   if (clean.capacityCapex) changes.push(`Đầu tư công suất ${fmtK(clean.capacityCapex)}`);
   if (clean.newLoan) changes.push(`Vay mới ${fmtK(clean.newLoan)} ${clean.loanCurrency}`);
@@ -52,7 +52,7 @@ export default function Submit() {
   return (
     <div>
       <div className="section-title"><div><h1>Kiểm tra & nộp quyết định – vòng {game.round}</h1><div className="muted small">Kiểm tra giống phía server (Decision Dependency Engine): BOM, công nghệ, trần sở hữu, hạn mức vay, ngân sách tiền mặt.</div></div>
-        {d.submitted ? <Badge tone="good">✔ Đã nộp (revision {d.revision})</Badge> : <Badge tone="warn">Bản nháp (revision {d.revision})</Badge>}
+        {d.submitted ? <Badge tone="good">Đã nộp (revision {d.revision})</Badge> : <Badge tone="warn">Bản nháp (revision {d.revision})</Badge>}
       </div>
       <div className="grid g2" style={{ alignItems: 'start' }}>
         <div className="stack">
@@ -79,12 +79,12 @@ export default function Submit() {
             {game.phase !== 'OPEN' ? <p className="muted">Vòng đã khoá.</p> : co.isBot ? <p className="muted">Đội bot tự ra quyết định khi xử lý vòng.</p> : d.submitted ? (
               <div className="stack">
                 <div className="alert good">Đã nộp. Bạn vẫn có thể rút lại để sửa trước khi Game Master khoá vòng.</div>
-                <button className="btn" onClick={amend}>✎ Rút lại để chỉnh sửa</button>
+                <button className="btn" onClick={amend}>Rút lại để chỉnh sửa</button>
               </div>
             ) : (
               <div className="stack">
                 <p className="small muted">Các quyết định không đảo ngược (capex, liên doanh, mua lại, vay) sẽ được thực hiện khi xử lý vòng. Nếu không nộp, hệ thống dùng chính sách mặc định an toàn từ bản nháp hiện tại.</p>
-                <button className="btn primary" disabled={errors.length > 0 || readOnly} onClick={submit}>📤 Nộp quyết định vòng {game.round}</button>
+                <button className="btn primary" disabled={errors.length > 0 || readOnly} onClick={submit}>Nộp quyết định vòng {game.round}</button>
               </div>
             )}
           </Card>

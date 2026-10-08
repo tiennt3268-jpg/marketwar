@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTeam } from '../context';
-import { Badge, Card, Check, COUNTRY_FLAG, COUNTRY_VI, NumField, RangeField, SEGMENT_VI, SelectField, Tabs } from '../components';
+import { Badge, Card, Check, COUNTRY_VI, NumField, RangeField, SEGMENT_VI, SelectField, Tabs } from '../components';
 import { COSTS } from '../../engine/decisions';
 import { MODE_RULES } from '../../engine/scenario';
 import { AD_CHANNELS, COUNTRIES, SEGMENTS, type AdChannel, type CountryCode, type MessageTheme, type PromotionKind, type SalaryPolicy } from '../../engine/types';
@@ -28,7 +28,7 @@ export default function Marketing() {
       <Tabs value={c} onChange={setC} items={COUNTRIES.map((x) => {
         const px = co.countries[x];
         const on = px.status === 'active' || px.status === 'pending' || d.countries[x].entryAction === 'enter';
-        return { value: x, label: <span>{COUNTRY_FLAG[x]} {x} {on ? '●' : ''}</span> };
+        return { value: x, label: <span>{x} {on ? '(đã vào)' : ''}</span> };
       })} />
       {!engaged && <div className="alert warn" style={{ marginBottom: 12 }}>Bạn chưa thâm nhập {COUNTRY_VI[c]}. Các thiết lập dưới đây chỉ có hiệu lực sau khi chọn phương thức thâm nhập ở trang Chiến lược.</div>}
       {lastPos && lastPos.label !== 'Not present' && <div className="alert info small" style={{ marginBottom: 12 }}>Vòng trước engine định vị bạn tại {COUNTRY_VI[c]} là <b>{lastPos.label}</b> (RPI {lastPos.rpi.toFixed(0)}, chất lượng cảm nhận {lastPos.perceivedQuality.toFixed(0)}).</div>}
@@ -56,7 +56,7 @@ export default function Marketing() {
                     <td className="num"><input type="number" style={{ width: 100 }} step={env.fxRate > 10 ? 10 : 0.1} value={price} disabled={readOnly} onChange={(e) => { const v = parseFloat(e.target.value); if (v > 0) set((x) => { x.prices[s.skuId] = v; }); }} /></td>
                     <td className="num">${(price / env.fxRate).toFixed(2)}</td>
                     <td className="num">{(price * 200 / Math.max(1, grams)).toFixed(env.fxRate > 10 ? 0 : 2)}</td>
-                    <td>{localized ? <Badge tone="good">✔ đã chuẩn</Badge> : (
+                    <td>{localized ? <Badge tone="good">đã chuẩn</Badge> : (
                       <Check label={`$${fmtNum(COSTS.labelLocalizeFee)}`} checked={!!cd.labelLocalize[s.skuId]} disabled={readOnly} onChange={(v) => set((x) => { x.labelLocalize[s.skuId] = v; })} />
                     )}</td>
                   </tr>

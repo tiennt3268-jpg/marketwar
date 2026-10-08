@@ -1,5 +1,5 @@
 import { useTeam } from '../context';
-import { Badge, Card, COUNTRY_FLAG, NumField } from '../components';
+import { Badge, Card, NumField } from '../components';
 import { COSTS, currentVersion, vnAvailableBySku } from '../../engine/decisions';
 import { estimateUnitCost } from '../../engine/product';
 import { MODE_RULES } from '../../engine/scenario';
@@ -41,14 +41,14 @@ export default function Operations() {
             <div className="stat"><span className="label">Kế hoạch</span><b className={`mono ${totalProd > co.vnCapacity ? 'bad' : ''}`}>{fmtNum(totalProd)}</b><span className="sub">{((totalProd / co.vnCapacity) * 100).toFixed(0)}% công suất</span></div>
             <div className="stat"><span className="label">Freeze-drying</span><b>{co.hasFreezeTech ? <Badge tone="good">Có</Badge> : <Badge>{fmtK(co.freezeTechProgress)} / {fmtK(COSTS.freezeTechThreshold)}</Badge>}</b></div>
           </div>
-          {co.capacityProjects.map((p, i) => <div key={i} className="small muted">🏗️ +{fmtNum(p.addBoxes)} hộp/quý sẵn sàng từ vòng {p.readyRound}</div>)}
+          {co.capacityProjects.map((p, i) => <div key={i} className="small muted">+{fmtNum(p.addBoxes)} hộp/quý sẵn sàng từ vòng {p.readyRound}</div>)}
           <div className="form-grid" style={{ marginTop: 10 }}>
             <NumField label="Mở rộng công suất (capex)" suffix="USD" value={d.capacityCapex} step={50_000} disabled={readOnly} onChange={(v) => update((x) => { x.capacityCapex = v; })}
               hint={`≈ +${fmtNum(Math.floor(d.capacityCapex / game.scenario.global.baseCapacityCostPerBox))} hộp/quý, sau 2 vòng`} />
             <NumField label="Bảo trì" suffix="USD" value={d.maintenanceBudget} step={5000} disabled={readOnly} onChange={(v) => update((x) => { x.maintenanceBudget = v; })}
               hint={`Khuyến nghị ≥ ${fmtK(0.02 * vnPlant)} để đạt 100% hiệu suất`} />
-            <NumField label="Kiểm định chất lượng (QC)" suffix="USD" value={d.qualityBudget} step={5000} disabled={readOnly} onChange={(v) => update((x) => { x.qualityBudget = v; })} hint="Giảm tỷ lệ lỗi ⇒ hài lòng ↑" />
-            <NumField label="R&D" suffix="USD" value={d.rdBudget} step={10_000} disabled={readOnly} onChange={(v) => update((x) => { x.rdBudget = v; })} hint="Process maturity ↑ (phiên bản sau)" />
+            <NumField label="Kiểm định chất lượng (QC)" suffix="USD" value={d.qualityBudget} step={5000} disabled={readOnly} onChange={(v) => update((x) => { x.qualityBudget = v; })} hint="Giảm tỷ lệ lỗi ⇒ hài lòng tăng" />
+            <NumField label="R&D" suffix="USD" value={d.rdBudget} step={10_000} disabled={readOnly} onChange={(v) => update((x) => { x.rdBudget = v; })} hint="Process maturity tăng (phiên bản sau)" />
             <NumField label="Innovation (freeze-drying)" suffix="USD" value={d.innovationBudget} step={50_000} disabled={readOnly || co.hasFreezeTech} onChange={(v) => update((x) => { x.innovationBudget = v; })} hint="Tích luỹ đủ ngưỡng ⇒ có công nghệ" />
             <NumField label="Đa dạng hoá nguồn cung" suffix="USD" value={d.dualSourcingSpend} step={10_000} disabled={readOnly} onChange={(v) => update((x) => { x.dualSourcingSpend = v; })} hint={`Giảm cú sốc giá cà phê (chỉ số hiện tại ${coffeeIdx.toFixed(0)})`} />
           </div>
@@ -77,7 +77,7 @@ export default function Operations() {
             <h4 style={{ marginTop: 12 }}>Sản xuất tại nhà máy nước ngoài</h4>
             {localCountries.map((c) => (
               <div key={c} className="stack" style={{ marginBottom: 8 }}>
-                <b>{COUNTRY_FLAG[c]} {c} – công suất {fmtNum(co.countries[c].localCapacity)} hộp</b>
+                <b>{c} – công suất {fmtNum(co.countries[c].localCapacity)} hộp</b>
                 <div className="form-grid">{skus.filter((s) => currentVersion(s, game.round)).map((s) => (
                   <NumField key={s.id} label={s.name} value={d.countries[c].localProduction[s.id] ?? 0} step={5000} disabled={readOnly} onChange={(v) => update((x) => { x.countries[c].localProduction[s.id] = Math.floor(v); })} />
                 ))}</div>
@@ -101,7 +101,7 @@ export default function Operations() {
               const closed = !!(game.env[s.country].closedModes & { sea: 1, air: 2, multimodal: 4 }[s.mode]);
               return (
                 <tr key={i}>
-                  <td><select value={s.country} disabled={readOnly} onChange={(e) => setShip(i, { country: e.target.value as CountryCode })}>{exportCountries.map((c) => <option key={c} value={c}>{COUNTRY_FLAG[c]} {c}</option>)}</select></td>
+                  <td><select value={s.country} disabled={readOnly} onChange={(e) => setShip(i, { country: e.target.value as CountryCode })}>{exportCountries.map((c) => <option key={c} value={c}>{c}</option>)}</select></td>
                   <td><select value={s.skuId} disabled={readOnly} onChange={(e) => setShip(i, { skuId: e.target.value })}>{skus.map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}</select></td>
                   <td className="num"><input type="number" style={{ width: 95 }} step={5000} min={0} value={s.qty} disabled={readOnly} onChange={(e) => setShip(i, { qty: Math.max(0, Math.floor(+e.target.value || 0)) })} /></td>
                   <td><select value={s.mode} disabled={readOnly} onChange={(e) => setShip(i, { mode: e.target.value as FreightMode })}><option value="sea">Sea</option><option value="multimodal">Multimodal</option><option value="air">Air</option></select>{closed && <div className="small bad">tuyến đóng</div>}</td>
@@ -110,7 +110,7 @@ export default function Operations() {
                   <td><select value={s.insurance} disabled={readOnly} onChange={(e) => setShip(i, { insurance: e.target.value as CargoInsurance })}><option value="none">Không</option><option value="basic">Basic (60%)</option><option value="comprehensive">Comprehensive (100%, gồm rủi ro chiến tranh)</option></select></td>
                   <td className="num">{fmtK(freight)}</td>
                   <td className="small">{r.leadRounds === 0 ? 'trong vòng' : `+${r.leadRounds} vòng`}<div className="muted">trễ {(delay * 100).toFixed(0)}%</div></td>
-                  <td><button className="btn sm ghost" disabled={readOnly} onClick={() => update((x) => { x.shipments.splice(i, 1); })} aria-label="Xoá">✕</button></td>
+                  <td><button className="btn sm ghost" disabled={readOnly} onClick={() => update((x) => { x.shipments.splice(i, 1); })} aria-label="Xoá">Xoá</button></td>
                 </tr>
               );
             })}</tbody>
@@ -128,7 +128,7 @@ export default function Operations() {
           {co.inventory.length === 0 ? <p className="muted small">Không có tồn kho.</p> : (
             <div className="table-wrap"><table>
               <thead><tr><th>Nơi</th><th>SKU / phiên bản</th><th className="num">Số hộp</th><th className="num">Giá vốn/hộp</th></tr></thead>
-              <tbody>{co.inventory.map((l, i) => <tr key={i}><td>{l.location === 'VN' ? '🇻🇳 VN' : `${COUNTRY_FLAG[l.location]} ${l.location}`}</td><td>{l.versionId}</td><td className="num">{fmtNum(l.qty)}</td><td className="num">{fmtUSD(l.unitCost, 2)}</td></tr>)}</tbody>
+              <tbody>{co.inventory.map((l, i) => <tr key={i}><td>{l.location === 'VN' ? 'VN' : `$${l.location}`}</td><td>{l.versionId}</td><td className="num">{fmtNum(l.qty)}</td><td className="num">{fmtUSD(l.unitCost, 2)}</td></tr>)}</tbody>
             </table></div>
           )}
         </Card>
@@ -137,7 +137,7 @@ export default function Operations() {
             <div className="table-wrap"><table>
               <thead><tr><th>Lô</th><th>Đến</th><th className="num">Hộp</th><th>Phương thức</th><th>ETA</th><th>Trạng thái</th></tr></thead>
               <tbody>{co.shipments.filter((s) => s.status === 'in_transit' || s.status === 'detained').map((s) => (
-                <tr key={s.id}><td>{s.id}</td><td>{COUNTRY_FLAG[s.country]} {s.country}</td><td className="num">{fmtNum(sum(s.lines.map((l) => l.qty)))}</td><td>{s.mode}/{s.incoterm}</td><td>vòng {s.etaRound}</td><td>{s.status === 'detained' ? <Badge tone="bad">bị giữ</Badge> : <Badge tone="info">đang đi</Badge>}</td></tr>
+                <tr key={s.id}><td>{s.id}</td><td>{s.country}</td><td className="num">{fmtNum(sum(s.lines.map((l) => l.qty)))}</td><td>{s.mode}/{s.incoterm}</td><td>vòng {s.etaRound}</td><td>{s.status === 'detained' ? <Badge tone="bad">bị giữ</Badge> : <Badge tone="info">đang đi</Badge>}</td></tr>
               ))}</tbody>
             </table></div>
           )}

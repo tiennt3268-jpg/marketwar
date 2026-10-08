@@ -6,12 +6,12 @@ import type { BotStrategy, GameState } from '../../engine/types';
 import { deleteGame, listSaved, loadGame } from '../store';
 import { Card, NumField } from '../components';
 
-const COLORS = ['#c0602a', '#2c6aa0', '#2f7d4f', '#8a4fb0', '#b3372b', '#a8740c', '#1f8a8a', '#6b6b6b'];
+const COLORS = ['#1f8f4e', '#2f4858', '#7a9e3a', '#4a6fa5', '#9a6b3f', '#6b4f8a', '#2a9d8f', '#8a8f8c'];
 const DEFAULT_NAMES = ['Saigon Brew', 'Hanoi Roasters', 'Mekong Coffee', 'Dalat Highlands', 'Hue Heritage', 'Da Nang Drip', 'Can Tho Cafe', 'Ha Long Beans'];
 
 interface TeamRow extends TeamConfig { pin: string }
 
-export default function Home({ onOpen, theme, setTheme }: { onOpen: (g: GameState) => void; theme: string; setTheme: (t: string) => void }) {
+export default function Home({ onOpen }: { onOpen: (g: GameState) => void }) {
   const [name, setName] = useState('Market Wars – Lớp Kinh doanh quốc tế');
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 1_000_000));
   const [practice, setPractice] = useState(2);
@@ -53,13 +53,11 @@ export default function Home({ onOpen, theme, setTheme }: { onOpen: (g: GameStat
     <div className="hero">
       <div className="spread" style={{ marginBottom: 18 }}>
         <div className="row">
-          <div className="brand-logo" style={{ width: 48, height: 48, fontSize: 26 }}>☕</div>
           <div>
-            <h1 style={{ margin: 0 }}>MARKET WARS</h1>
+            <h1 style={{ margin: 0 }}>Market Wars</h1>
             <div className="muted">Vietnam Goes Global – mô phỏng chiến lược thâm nhập thị trường quốc tế</div>
           </div>
         </div>
-        <button className="btn sm ghost" onClick={() => setTheme(theme === 'dark' ? 'light' : theme === 'light' ? 'auto' : 'dark')}>{theme === 'dark' ? '🌙' : theme === 'light' ? '☀️' : '🌓'} Giao diện</button>
       </div>
       <p className="muted" style={{ maxWidth: 760 }}>
         Mỗi đội điều hành một doanh nghiệp cà phê hòa tan Việt Nam với điều kiện xuất phát giống hệt nhau, cạnh tranh đồng thời tại
@@ -82,15 +80,15 @@ export default function Home({ onOpen, theme, setTheme }: { onOpen: (g: GameStat
                 <input type="color" className="color-swatch" value={t.color} onChange={(e) => setTeam(i, { color: e.target.value })} aria-label="Màu đội" />
                 <input type="text" value={t.name} onChange={(e) => setTeam(i, { name: e.target.value })} aria-label="Tên đội" />
                 <select value={t.isBot ? 'bot' : 'human'} onChange={(e) => setTeam(i, { isBot: e.target.value === 'bot', botStrategy: e.target.value === 'bot' ? t.botStrategy ?? 'export_first' : undefined })}>
-                  <option value="human">👥 Người chơi</option>
-                  <option value="bot">🤖 Bot</option>
+                  <option value="human">Người chơi</option>
+                  <option value="bot">Bot</option>
                 </select>
                 {t.isBot ? (
                   <select value={t.botStrategy} onChange={(e) => setTeam(i, { botStrategy: e.target.value as BotStrategy })} aria-label="Chiến lược bot">
                     {BOT_STRATEGIES.map((s) => <option key={s} value={s}>{BOT_PROFILES[s].label}</option>)}
                   </select>
                 ) : <input type="password" placeholder="PIN (tuỳ chọn)" value={t.pin} onChange={(e) => setTeam(i, { pin: e.target.value })} aria-label="PIN" />}
-                <button className="btn sm ghost" disabled={teams.length <= 2} onClick={() => setTeams(teams.filter((_, j) => j !== i))} aria-label="Xoá đội">✕</button>
+                <button className="btn sm ghost" disabled={teams.length <= 2} onClick={() => setTeams(teams.filter((_, j) => j !== i))} aria-label="Xoá đội">Xoá</button>
               </div>
             ))}
             <div className="row">
@@ -100,7 +98,7 @@ export default function Home({ onOpen, theme, setTheme }: { onOpen: (g: GameStat
               Chơi chung một máy (hot-seat): mỗi đội chọn tên mình ở ô <b>“Đang xem”</b> để ra quyết định; đặt PIN để giữ bí mật chiến lược.
               Game Master xử lý vòng khi các đội đã nộp. Dữ liệu được lưu trong trình duyệt và có thể xuất file JSON.
             </div>
-            <button className="btn primary" onClick={start} disabled={teams.length < 2 || teams.some((t) => !t.name.trim())}>▶ Bắt đầu trò chơi</button>
+            <button className="btn primary" onClick={start} disabled={teams.length < 2 || teams.some((t) => !t.name.trim())}>Bắt đầu trò chơi</button>
           </div>
         </Card>
 
@@ -125,7 +123,7 @@ export default function Home({ onOpen, theme, setTheme }: { onOpen: (g: GameStat
               </div>
             )}
             <div style={{ marginTop: 12 }}>
-              <label className="btn sm">📂 Nhập file save (.json)<input type="file" accept="application/json" hidden onChange={(e) => e.target.files?.[0] && importFile(e.target.files[0])} /></label>
+              <label className="btn sm">Nhập file save (.json)<input type="file" accept="application/json" hidden onChange={(e) => e.target.files?.[0] && importFile(e.target.files[0])} /></label>
               {importError && <div className="bad small" style={{ marginTop: 6 }}>{importError}</div>}
             </div>
           </Card>

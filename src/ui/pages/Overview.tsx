@@ -1,5 +1,5 @@
 import { useTeam } from '../context';
-import { Badge, Card, COUNTRY_FLAG, COUNTRY_VI, Stat } from '../components';
+import { Badge, Card, COUNTRY_VI, Stat } from '../components';
 import { LineChart } from '../charts';
 import { MODE_RULES } from '../../engine/scenario';
 import { COUNTRIES } from '../../engine/types';
@@ -33,7 +33,7 @@ export default function Overview() {
           <h1 className="row"><span className="dot" style={{ background: co.color, width: 14, height: 14 }} />{co.name}</h1>
           <div className="muted small">Trụ sở & nhà máy tại Việt Nam · {co.status === 'bankrupt' ? <b className="bad">ĐANG THANH LÝ</b> : 'đang hoạt động'}{last?.strategyInferred ? ` · Chiến lược suy ra: ${last.strategyInferred}` : ''}</div>
         </div>
-        {d.submitted ? <Badge tone="good">✔ Đã nộp vòng {game.round}</Badge> : game.phase === 'OPEN' ? <button className="btn primary" onClick={() => go('submit')}>Kiểm tra & nộp →</button> : null}
+        {d.submitted ? <Badge tone="good">Đã nộp vòng {game.round}</Badge> : game.phase === 'OPEN' ? <button className="btn primary" onClick={() => go('submit')}>Kiểm tra & nộp</button> : null}
       </div>
 
       <div className="grid g4">
@@ -44,7 +44,7 @@ export default function Overview() {
       </div>
 
       <div className="grid g2" style={{ marginTop: 14, alignItems: 'start' }}>
-        <Card title="Hiện diện tại các thị trường" actions={<button className="btn sm" onClick={() => go('strategy')}>Quản lý →</button>}>
+        <Card title="Hiện diện tại các thị trường" actions={<button className="btn sm" onClick={() => go('strategy')}>Quản lý</button>}>
           <div className="table-wrap">
             <table>
               <thead><tr><th>Quốc gia</th><th>Trạng thái</th><th>Phương thức</th><th className="num">Thương hiệu</th><th className="num">Độ phủ</th><th className="num">Tồn kho</th></tr></thead>
@@ -54,7 +54,7 @@ export default function Overview() {
                   const stock = sum(co.inventory.filter((l) => l.location === c).map((l) => l.qty));
                   return (
                     <tr key={c}>
-                      <td>{COUNTRY_FLAG[c]} {COUNTRY_VI[c]}</td>
+                      <td>{COUNTRY_VI[c]}</td>
                       <td>{p.status === 'active' ? <Badge tone="good">Hoạt động</Badge> : p.status === 'pending' ? <Badge tone="warn">Từ vòng {p.activationRound}</Badge> : d.countries[c].entryAction === 'enter' ? <Badge tone="info">Sắp vào</Badge> : <Badge>{p.status === 'exited' ? 'Đã rút' : 'Chưa vào'}</Badge>}</td>
                       <td>{p.mode ? MODE_RULES[p.mode].label : '—'}</td>
                       <td className="num">{p.brand.toFixed(0)}</td>
@@ -71,7 +71,7 @@ export default function Overview() {
           <div className="stack">
             {todo.map((t) => (
               <div key={t.label} className="spread">
-                <span>{t.done ? '✅' : '⬜'} {t.label}</span>
+                <span><span className={t.done ? 'good' : 'muted'}>{t.done ? 'Xong' : 'Chưa'}</span> · {t.label}</span>
                 {!t.done && <button className="btn sm" onClick={() => go(t.page)}>Mở</button>}
               </div>
             ))}
@@ -85,7 +85,7 @@ export default function Overview() {
       </div>
 
       {game.activeEvents.length > 0 && (
-        <Card title="⚡ Sự kiện môi trường đang diễn ra" className="" >
+        <Card title="Sự kiện môi trường đang diễn ra" className="" >
           {game.activeEvents.map((e) => <div key={e.templateId + e.round}><b>{e.name}</b>{e.country ? ` (${e.country})` : ''} – <span className="muted">{e.description}</span> <span className="small muted">đến hết vòng {e.untilRound}</span></div>)}
         </Card>
       )}
@@ -100,9 +100,9 @@ export default function Overview() {
         <Card title="Diễn biến">
           <LineChart labels={scoredHist.map((h) => `V${h.round - game.scenario.practiceRounds}`)} format={(v) => fmtK(v)}
             series={[
-              { name: 'Doanh thu', color: '#2c6aa0', values: scoredHist.map((h) => h.income.revenue + h.income.royaltyIncome) },
+              { name: 'Doanh thu', color: '#9aa6a0', values: scoredHist.map((h) => h.income.revenue + h.income.royaltyIncome) },
               { name: 'Lợi nhuận ròng', color: co.color, values: scoredHist.map((h) => h.income.netIncome) },
-              { name: 'Tiền mặt', color: '#2f7d4f', values: scoredHist.map((h) => h.balance.cash) },
+              { name: 'Tiền mặt', color: '#1f8f4e', values: scoredHist.map((h) => h.balance.cash) },
             ]} />
         </Card>
       )}

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTeam } from '../context';
-import { Card, COUNTRY_FLAG, COUNTRY_VI, SEGMENT_VI, SelectField, Tabs, Badge } from '../components';
+import { Card, COUNTRY_VI, SEGMENT_VI, SelectField, Tabs, Badge } from '../components';
 import { LineChart } from '../charts';
 import { COUNTRIES, type CountryCode, type ResearchTier } from '../../engine/types';
 import { COSTS } from '../../engine/decisions';
@@ -39,13 +39,13 @@ export default function Intelligence() {
   return (
     <div>
       <div className="section-title"><h1>Thông tin thị trường</h1><span className="muted small">Dữ liệu vĩ mô công khai · sở thích khách hàng chỉ biết qua nghiên cứu thị trường (có sai số)</span></div>
-      <Tabs value={c} onChange={setC} items={COUNTRIES.map((x) => ({ value: x, label: `${COUNTRY_FLAG[x]} ${COUNTRY_VI[x]}` }))} />
+      <Tabs value={c} onChange={setC} items={COUNTRIES.map((x) => ({ value: x, label: `$${COUNTRY_VI[x]}` }))} />
       <div className="grid g2" style={{ alignItems: 'start' }}>
         <Card title="Môi trường vĩ mô (Environment variables)">
           <div className="table-wrap"><table><tbody>
             {macro.map(([k, v, h]) => <tr key={k}><td>{k}</td><td className="num"><b>{v}</b></td><td className="small muted hide-sm" style={{ whiteSpace: 'normal' }}>{h}</td></tr>)}
           </tbody></table></div>
-          {game.activeEvents.filter((e) => !e.country || e.country === c).map((e) => <div key={e.templateId} className="alert warn small" style={{ marginTop: 8 }}>⚡ <b>{e.name}</b>: {e.description}</div>)}
+          {game.activeEvents.filter((e) => !e.country || e.country === c).map((e) => <div key={e.templateId} className="alert warn small" style={{ marginTop: 8 }}><b>{e.name}</b>: {e.description}</div>)}
         </Card>
         <div className="stack">
           <Card title="Mua nghiên cứu thị trường (vòng này)">
@@ -71,8 +71,8 @@ export default function Intelligence() {
           </Card>
           {game.results.length > 0 && (
             <Card title="Xu hướng">
-              <LineChart labels={game.results.map((r) => `R${r.round}`)} series={[{ name: `${env.currency}/USD`, color: '#2c6aa0', values: fxHist }]} format={(v) => v.toFixed(v > 10 ? 0 : 3)} yMin={Math.min(...fxHist) * 0.95} height={150} />
-              <LineChart labels={game.results.map((r) => `R${r.round}`)} series={[{ name: 'Tiềm năng (hộp)', color: '#a4592a', values: potHist }]} format={(v) => fmtNum(v / 1000) + 'K'} height={150} />
+              <LineChart labels={game.results.map((r) => `R${r.round}`)} series={[{ name: `${env.currency}/USD`, color: '#1f8f4e', values: fxHist }]} format={(v) => v.toFixed(v > 10 ? 0 : 3)} yMin={Math.min(...fxHist) * 0.95} height={150} />
+              <LineChart labels={game.results.map((r) => `R${r.round}`)} series={[{ name: 'Tiềm năng (hộp)', color: '#1f8f4e', values: potHist }]} format={(v) => fmtNum(v / 1000) + 'K'} height={150} />
             </Card>
           )}
         </div>

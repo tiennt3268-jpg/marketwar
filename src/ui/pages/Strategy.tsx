@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTeam } from '../context';
-import { Badge, Card, COUNTRY_FLAG, COUNTRY_VI, RangeField, SelectField, Tabs } from '../components';
+import { Badge, Card, COUNTRY_VI, RangeField, SelectField, Tabs } from '../components';
 import { MODE_RULES, SCALE_MULT } from '../../engine/scenario';
 import { COUNTRIES, ENTRY_MODES, type CountryCode, type EntryScale } from '../../engine/types';
 import { fmtK, fmtNum, fmtPct } from '../../engine/util';
@@ -32,13 +32,13 @@ export default function Strategy() {
           const px = co.countries[x];
           return (
             <button key={x} className={`card mode-card ${x === c ? 'selected' : ''}`} onClick={() => setC(x)}>
-              <div className="spread"><b>{COUNTRY_FLAG[x]} {COUNTRY_VI[x]}</b>{px.status === 'active' ? <Badge tone="good">Active</Badge> : px.status === 'pending' ? <Badge tone="warn">Pending</Badge> : d.countries[x].entryAction === 'enter' ? <Badge tone="info">Kế hoạch</Badge> : <Badge>—</Badge>}</div>
+              <div className="spread"><b>{COUNTRY_VI[x]}</b>{px.status === 'active' ? <Badge tone="good">Active</Badge> : px.status === 'pending' ? <Badge tone="warn">Pending</Badge> : d.countries[x].entryAction === 'enter' ? <Badge tone="info">Kế hoạch</Badge> : <Badge>—</Badge>}</div>
               <div className="small muted">{px.mode ? MODE_RULES[px.mode].label : d.countries[x].entryAction === 'enter' ? `→ ${MODE_RULES[d.countries[x].entryMode].label}` : 'Chưa thâm nhập'}</div>
             </button>
           );
         })}
       </div>
-      <Tabs value={c} onChange={setC} items={COUNTRIES.map((x) => ({ value: x, label: `${COUNTRY_FLAG[x]} ${x}` }))} />
+      <Tabs value={c} onChange={setC} items={COUNTRIES.map((x) => ({ value: x, label: `$${x}` }))} />
 
       {engaged ? (
         <Card title={`${COUNTRY_VI[c]}: ${MODE_RULES[p.mode!].label} – ${p.status === 'active' ? 'đang hoạt động' : `hoạt động từ vòng ${p.activationRound}`}`}>

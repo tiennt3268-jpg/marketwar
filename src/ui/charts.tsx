@@ -82,10 +82,10 @@ export function PositioningMap({ points, height = 320 }: { points: MapPoint[]; h
     <svg viewBox={`0 0 ${W} ${H}`} className="chart" role="img" aria-label="Perceptual positioning map">
       <line x1={sx(100)} x2={sx(100)} y1={T} y2={H - B} className="axis" strokeDasharray="4 4" />
       <line x1={L} x2={W - R} y1={sy(avgY)} y2={sy(avgY)} className="axis" strokeDasharray="4 4" />
-      <text x={W - R} y={T + 10} textAnchor="end">Premium ↗</text>
-      <text x={L + 4} y={T + 10}>Value for money ↖</text>
-      <text x={L + 4} y={H - B - 6}>Economy ↙</text>
-      <text x={W - R} y={H - B - 6} textAnchor="end">Overpriced ↘</text>
+      <text x={W - R} y={T + 10} textAnchor="end">Premium </text>
+      <text x={L + 4} y={T + 10}>Value for money </text>
+      <text x={L + 4} y={H - B - 6}>Economy </text>
+      <text x={W - R} y={H - B - 6} textAnchor="end">Overpriced </text>
       <text x={(L + W - R) / 2} y={H - 6} textAnchor="middle">Relative Price Index (100 = giá tham chiếu thị trường)</text>
       <text x={12} y={(T + H - B) / 2} transform={`rotate(-90 12 ${(T + H - B) / 2})`} textAnchor="middle">Perceived quality</text>
       {[x0, 100, x1].map((v) => <text key={v} x={sx(v)} y={H - B + 14} textAnchor="middle">{v.toFixed(0)}</text>)}

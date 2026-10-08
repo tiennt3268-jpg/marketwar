@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import type { CountryCode, SegmentId } from '../engine/types';
 
-export const COUNTRY_FLAG: Record<CountryCode, string> = { CN: '🇨🇳', JP: '🇯🇵', US: '🇺🇸', GB: '🇬🇧' };
 export const COUNTRY_VI: Record<CountryCode, string> = { CN: 'Trung Quốc', JP: 'Nhật Bản', US: 'Hoa Kỳ', GB: 'Vương quốc Anh' };
 export const SEGMENT_VI: Record<SegmentId, string> = { budget: 'Budget (giá rẻ)', mainstream: 'Mainstream (đại chúng)', premium: 'Premium (cao cấp)', health: 'Health-conscious (sức khỏe)' };
 

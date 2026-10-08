@@ -1,5 +1,5 @@
 import { useTeam } from '../context';
-import { Badge, Card, COUNTRY_FLAG, COUNTRY_VI, NumField, RangeField, SelectField } from '../components';
+import { Badge, Card, COUNTRY_VI, NumField, RangeField, SelectField } from '../components';
 import { creditLimit, estimateSpend } from '../../engine/decisions';
 import { COUNTRIES, type PolicyTier } from '../../engine/types';
 import { fmtK, fmtNum, fmtPct, sum } from '../../engine/util';
@@ -53,7 +53,7 @@ export default function Treasury() {
           <Card title="Phòng ngừa tỷ giá (fx_hedges)">
             <p className="small muted">Forward khoá tỷ giá của quý trước cho tỷ lệ doanh thu ngoại tệ được chọn (phí 0,4% danh nghĩa). Lãi/lỗ forward ghi riêng ở dòng FX.</p>
             {COUNTRIES.filter((c) => game.env[c].currency !== 'USD').map((c) => (
-              <RangeField key={c} label={`${COUNTRY_FLAG[c]} ${game.env[c].currency} – tỷ giá hiện tại ${game.fx[game.env[c].currency].toFixed(game.fx[game.env[c].currency] > 10 ? 1 : 3)}`}
+              <RangeField key={c} label={`$${game.env[c].currency} – tỷ giá hiện tại ${game.fx[game.env[c].currency].toFixed(game.fx[game.env[c].currency] > 10 ? 1 : 3)}`}
                 value={Math.round(d.countries[c].hedgeRatio * 100)} min={0} max={100} step={10} disabled={readOnly} format={(v) => `${v}%`}
                 onChange={(v) => update((x) => { x.countries[c].hedgeRatio = v / 100; })} />
             ))}
@@ -66,7 +66,7 @@ export default function Treasury() {
                 const p = co.countries[c];
                 return (
                   <tr key={c}>
-                    <td>{COUNTRY_FLAG[c]} {COUNTRY_VI[c]}</td>
+                    <td>{COUNTRY_VI[c]}</td>
                     <td className="num">{game.env[c].politicalRisk}</td>
                     <td>{p.politicalPolicy ? <Badge tone={p.politicalPolicy.activeFrom <= game.round ? 'good' : 'warn'}>{p.politicalPolicy.tier} {p.politicalPolicy.activeFrom > game.round ? `(từ v${p.politicalPolicy.activeFrom})` : ''}</Badge> : '—'}</td>
                     <td><select value={d.countries[c].politicalPolicy} disabled={readOnly || (p.status !== 'active' && p.status !== 'pending' && d.countries[c].entryAction !== 'enter')} onChange={(e) => update((x) => { x.countries[c].politicalPolicy = e.target.value as PolicyTier; })}>
