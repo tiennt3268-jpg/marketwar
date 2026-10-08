@@ -19,7 +19,7 @@ export function LineChart({ series, labels, height = 220, format = (v: number) =
 }) {
   const W = 640, H = height, L = 56, R = 12, T = 12, B = 26;
   const all = series.flatMap((s) => s.values.filter((v): v is number => v !== null));
-  if (!all.length) return <p className="muted small">Chưa có dữ liệu.</p>;
+  if (!all.length) return <p className="muted small">No data yet.</p>;
   const lo = yMin ?? Math.min(0, ...all);
   const hi = niceMax(Math.max(...all, lo + 1));
   const x = (i: number) => L + (labels.length <= 1 ? (W - L - R) / 2 : (i * (W - L - R)) / (labels.length - 1));
@@ -86,7 +86,7 @@ export function PositioningMap({ points, height = 320 }: { points: MapPoint[]; h
       <text x={L + 4} y={T + 10}>Value for money </text>
       <text x={L + 4} y={H - B - 6}>Economy </text>
       <text x={W - R} y={H - B - 6} textAnchor="end">Overpriced </text>
-      <text x={(L + W - R) / 2} y={H - 6} textAnchor="middle">Relative Price Index (100 = giá tham chiếu thị trường)</text>
+      <text x={(L + W - R) / 2} y={H - 6} textAnchor="middle">Relative Price Index</text>
       <text x={12} y={(T + H - B) / 2} transform={`rotate(-90 12 ${(T + H - B) / 2})`} textAnchor="middle">Perceived quality</text>
       {[x0, 100, x1].map((v) => <text key={v} x={sx(v)} y={H - B + 14} textAnchor="middle">{v.toFixed(0)}</text>)}
       {points.map((p) => (

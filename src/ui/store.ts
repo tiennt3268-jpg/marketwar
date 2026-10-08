@@ -5,7 +5,7 @@ import type { GameState } from '../engine/types';
 const INDEX_KEY = 'marketwars:index';
 const GAME_KEY = (id: string) => `marketwars:game:${id}`;
 
-export interface SavedGameMeta { id: string; name: string; round: number; phase: string; teams: number; savedAt: string }
+export interface SavedGameMeta { id: string; name: string; round: number; phase: string; teams: number; savedAt: string; owner?: string }
 
 function safeGet(key: string): string | null {
   try { return localStorage.getItem(key); } catch { return null; }
@@ -17,17 +17,21 @@ function safeRemove(key: string) {
   try { localStorage.removeItem(key); } catch { /* ignore */ }
 }
 
-export function listSaved(): SavedGameMeta[] {
+function allSaved(): SavedGameMeta[] {
   try { return JSON.parse(safeGet(INDEX_KEY) ?? '[]') as SavedGameMeta[]; } catch { return []; }
+}
+
+export function listSaved(owner?: string): SavedGameMeta[] {
+  return allSaved().filter((g) => !owner || g.owner === owner);
 }
 
 export function saveGame(game: GameState): boolean {
   // Keep only the last 4 journals in storage to stay within quota; full journals live in memory/export.
   const slim: GameState = { ...game, results: game.results.map((r, i) => (i < game.results.length - 4 ? { ...r, journal: [] } : r)) };
   const ok = safeSet(GAME_KEY(game.id), JSON.stringify(slim));
-  const meta: SavedGameMeta = { id: game.id, name: game.name, round: game.round, phase: game.phase, teams: game.companies.length, savedAt: new Date().toISOString() };
-  const idx = listSaved().filter((g) => g.id !== game.id);
-  safeSet(INDEX_KEY, JSON.stringify([meta, ...idx].slice(0, 20)));
+  const meta: SavedGameMeta = { id: game.id, name: game.name, round: game.round, phase: game.phase, teams: game.companies.length, savedAt: new Date().toISOString(), owner: game.owner };
+  const idx = allSaved().filter((g) => g.id !== game.id);
+  safeSet(INDEX_KEY, JSON.stringify([meta, ...idx].slice(0, 50)));
   return ok;
 }
 
@@ -39,7 +43,7 @@ export function loadGame(id: string): GameState | null {
 
 export function deleteGame(id: string) {
   safeRemove(GAME_KEY(id));
-  safeSet(INDEX_KEY, JSON.stringify(listSaved().filter((g) => g.id !== id)));
+  safeSet(INDEX_KEY, JSON.stringify(allSaved().filter((g) => g.id !== id)));
 }
 
 export function getPref(key: string, dflt: string): string {

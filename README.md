@@ -16,9 +16,10 @@ SINGLE=1 npx vite build   # gói toàn bộ game thành một file HTML duy nh�
 
 ## Cách chơi (hot-seat, nhiều đội trên một máy)
 
+0. Đăng nhập hoặc tạo tài khoản (tài khoản lưu cục bộ trong trình duyệt, mật khẩu được băm SHA-256 kèm salt; mỗi tài khoản chỉ thấy các game mình tạo).
 1. Ở sảnh, tạo trò chơi: 2–8 đội, mỗi đội là **người chơi** (có thể đặt PIN) hoặc **bot** (6 chiến lược: price leader, quality differentiator, focused niche, export-first, JV diversifier, conservative).
-2. Mỗi đội chọn tên mình ở ô **“Đang xem”**, ra quyết định trên các trang: Thông tin thị trường → Product Lab → Chiến lược & Thâm nhập → Marketing & Giá → Sản xuất & Logistics → Tài chính & Rủi ro → **Kiểm tra & Nộp**.
-3. Chọn **Game Master** → **Khoá & xử lý vòng**. Kết quả được công bố: thị phần, bản đồ định vị, báo cáo tài chính, bảng xếp hạng.
+2. Mỗi đội chọn tên mình ở ô **Viewing as**, ra quyết định trên các trang: Market Intelligence → Product Lab → Strategy & Entry → Marketing & Pricing → Operations & Logistics → Finance & Risk → **Review & Submit**.
+3. Chọn **Game Master** → **Lock & process round**. Kết quả được công bố: thị phần, bản đồ định vị, báo cáo tài chính, bảng xếp hạng.
 4. Mặc định 2 vòng thử (reset về điểm xuất phát) + 8 vòng tính điểm; mỗi vòng = 1 quý. Game tự lưu trong trình duyệt, có thể xuất/nhập file JSON.
 
 Điểm: Lợi nhuận luỹ kế 30% · Thị phần toàn cầu 25% · ROIC 20% · Thương hiệu 15% · Khả năng chống chịu 10% (chuẩn hoá theo ngưỡng, trọng số chỉnh được).
@@ -49,7 +50,7 @@ src/engine/   # engine thuần TypeScript, không phụ thuộc UI – có thể
   ledger.ts       sổ kép, đóng sổ, lưu chuyển tiền tệ
   engine.ts       xử lý vòng (§8.2), định vị, chấm điểm, bất biến
   bots.ts         6 bot chiến lược
-src/ui/       # React UI (sảnh, 13 trang đội, Game Master Studio)
+src/ui/       # React UI tiếng Anh (đăng nhập, sảnh, 12 trang đội, Game Master)
 tests/        # acceptance + Monte Carlo
 ```
 

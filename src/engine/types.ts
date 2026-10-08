@@ -516,5 +516,6 @@ export interface GameState {
   decisions: Record<string, Decision>; // companyId -> draft for current round
   results: RoundResult[];
   audit: AuditEntry[];
+  owner?: string; // account that created the game
   pins?: Record<string, string>; // optional hot-seat team PINs (local play only)
 }

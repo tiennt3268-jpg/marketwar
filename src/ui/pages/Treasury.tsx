@@ -1,5 +1,5 @@
 import { useTeam } from '../context';
-import { Badge, Card, COUNTRY_VI, NumField, RangeField, SelectField } from '../components';
+import { Badge, Card, COUNTRY_NAME, NumField, RangeField, SelectField } from '../components';
 import { creditLimit, estimateSpend } from '../../engine/decisions';
 import { COUNTRIES, type PolicyTier } from '../../engine/types';
 import { fmtK, fmtNum, fmtPct, sum } from '../../engine/util';
@@ -15,78 +15,75 @@ export default function Treasury() {
 
   return (
     <div>
-      <div className="section-title"><div><h1>Tài chính quốc tế & quản trị rủi ro</h1><div className="muted small">Công cụ tài chính có chi phí và ràng buộc – phòng ngừa tỷ giá giảm biến động, không mặc định tăng lợi nhuận.</div></div></div>
+      <div className="section-title"><h1>Finance & Risk</h1></div>
       <div className="grid g2" style={{ alignItems: 'start' }}>
         <div className="stack">
-          <Card title="Ngân sách vòng này">
+          <Card title="Budget this round">
             <div className="table-wrap"><table><tbody>
               {Object.entries(spend).map(([k, v]) => <tr key={k}><td>{k}</td><td className="num">{fmtK(v)}</td></tr>)}
-              <tr className="total"><td>Tổng chi dự kiến</td><td className="num">{fmtK(spendTotal)}</td></tr>
-              <tr><td>Tiền mặt hiện có</td><td className="num">{fmtK(L.cash)}</td></tr>
-              <tr><td>+ Thu nợ / bồi thường đến hạn</td><td className="num">{fmtK(dueIn)}</td></tr>
-              <tr><td>+ Khoản vay mới − dự trữ tối thiểu</td><td className="num">{fmtK(d.newLoan - d.minCashReserve)}</td></tr>
-              <tr className="total"><td>Khả dụng</td><td className={`num ${available < spendTotal ? 'bad' : 'good'}`}>{fmtK(available)}</td></tr>
+              <tr className="total"><td>Planned spend</td><td className="num">{fmtK(spendTotal)}</td></tr>
+              <tr><td>Cash</td><td className="num">{fmtK(L.cash)}</td></tr>
+              <tr><td>Collections due</td><td className="num">{fmtK(dueIn)}</td></tr>
+              <tr><td>New loan less reserve</td><td className="num">{fmtK(d.newLoan - d.minCashReserve)}</td></tr>
+              <tr className="total"><td>Available</td><td className={`num ${available < spendTotal ? 'bad' : 'good'}`}>{fmtK(available)}</td></tr>
             </tbody></table></div>
-            {available < spendTotal && <div className="alert bad small" style={{ marginTop: 8 }}>Kế hoạch vượt tiền khả dụng – sẽ bị từ chối khi nộp. Hãy vay thêm, giảm chi hoặc hoãn đầu tư.</div>}
-            <p className="small muted" style={{ marginTop: 6 }}>Doanh thu bán hàng trong vòng không được tính trước khi duyệt ngân sách.</p>
+            {available < spendTotal && <div className="alert bad small" style={{ marginTop: 8 }}>Planned spend exceeds available cash.</div>}
           </Card>
-          <Card title="Vay & trả nợ (financing_contracts)">
+          <Card title="Borrowing">
             <div className="form-grid">
-              <NumField label="Khoản vay mới" suffix="USD" value={d.newLoan} step={100_000} disabled={readOnly} onChange={(v) => update((x) => { x.newLoan = v; })} hint={`Hạn mức còn lại ${fmtK(creditLimit(co))}`} />
-              <SelectField label="Đồng tiền vay" value={d.loanCurrency} disabled={readOnly} onChange={(v) => update((x) => { x.loanCurrency = v as 'USD' | 'VND'; })}
-                options={[{ value: 'USD', label: `USD – ${fmtPct(g.usdInterestRate)}/năm (+1% dài hạn)` }, { value: 'VND', label: `VND – ${fmtPct(g.vndInterestRate)}/năm, rủi ro tỷ giá` }]} />
-              <SelectField label="Kỳ hạn" value={String(d.loanTermRounds)} disabled={readOnly} onChange={(v) => update((x) => { x.loanTermRounds = Number(v); })}
-                options={[{ value: '2', label: 'Ngắn hạn – 2 quý' }, { value: '8', label: 'Dài hạn – 8 quý' }]} />
-              <NumField label="Trả nợ trước hạn" suffix="USD" value={d.debtRepayment} step={50_000} disabled={readOnly} onChange={(v) => update((x) => { x.debtRepayment = v; })} />
-              <NumField label="Dự trữ tiền mặt tối thiểu" suffix="USD" value={d.minCashReserve} step={50_000} disabled={readOnly} onChange={(v) => update((x) => { x.minCashReserve = v; })} />
-              <NumField label="Cổ tức" suffix="USD" value={d.dividend} step={50_000} disabled={readOnly} onChange={(v) => update((x) => { x.dividend = v; })} hint="Chỉ khi lợi nhuận giữ lại > 0" />
+              <NumField label="New loan" suffix="USD" value={d.newLoan} step={100_000} disabled={readOnly} onChange={(v) => update((x) => { x.newLoan = v; })} hint={`Limit ${fmtK(creditLimit(co))}`} />
+              <SelectField label="Currency" value={d.loanCurrency} disabled={readOnly} onChange={(v) => update((x) => { x.loanCurrency = v as 'USD' | 'VND'; })}
+                options={[{ value: 'USD', label: `USD · ${fmtPct(g.usdInterestRate)}/yr` }, { value: 'VND', label: `VND · ${fmtPct(g.vndInterestRate)}/yr` }]} />
+              <SelectField label="Term" value={String(d.loanTermRounds)} disabled={readOnly} onChange={(v) => update((x) => { x.loanTermRounds = Number(v); })}
+                options={[{ value: '2', label: 'Short · 2 quarters' }, { value: '8', label: 'Long · 8 quarters' }]} />
+              <NumField label="Early repayment" suffix="USD" value={d.debtRepayment} step={50_000} disabled={readOnly} onChange={(v) => update((x) => { x.debtRepayment = v; })} />
+              <NumField label="Minimum cash reserve" suffix="USD" value={d.minCashReserve} step={50_000} disabled={readOnly} onChange={(v) => update((x) => { x.minCashReserve = v; })} />
+              <NumField label="Dividend" suffix="USD" value={d.dividend} step={50_000} disabled={readOnly} onChange={(v) => update((x) => { x.dividend = v; })} />
             </div>
             {co.loans.length > 0 && (
-              <div className="table-wrap" style={{ marginTop: 10 }}><table>
-                <thead><tr><th>Khoản vay</th><th>Tiền</th><th className="num">Dư nợ (USD)</th><th className="num">Lãi suất</th><th>Đáo hạn</th></tr></thead>
-                <tbody>{co.loans.map((l) => <tr key={l.id}><td>{l.id}{l.emergency && <> <Badge tone="bad">khẩn cấp</Badge></>}</td><td>{l.currency}</td><td className="num">{fmtK(l.carryingUsd)}</td><td className="num">{fmtPct(l.annualRate)}</td><td>vòng {l.maturityRound}</td></tr>)}</tbody>
+              <div className="table-wrap" style={{ marginTop: 12 }}><table>
+                <thead><tr><th>Loan</th><th>Currency</th><th className="num">Outstanding</th><th className="num">Rate</th><th>Maturity</th></tr></thead>
+                <tbody>{co.loans.map((l) => <tr key={l.id}><td>{l.id}{l.emergency && <> <Badge tone="bad">Emergency</Badge></>}</td><td>{l.currency}</td><td className="num">{fmtK(l.carryingUsd)}</td><td className="num">{fmtPct(l.annualRate)}</td><td>Round {l.maturityRound}</td></tr>)}</tbody>
               </table></div>
             )}
           </Card>
         </div>
         <div className="stack">
-          <Card title="Phòng ngừa tỷ giá (fx_hedges)">
-            <p className="small muted">Forward khoá tỷ giá của quý trước cho tỷ lệ doanh thu ngoại tệ được chọn (phí 0,4% danh nghĩa). Lãi/lỗ forward ghi riêng ở dòng FX.</p>
+          <Card title="FX hedging">
             {COUNTRIES.filter((c) => game.env[c].currency !== 'USD').map((c) => (
-              <RangeField key={c} label={`$${game.env[c].currency} – tỷ giá hiện tại ${game.fx[game.env[c].currency].toFixed(game.fx[game.env[c].currency] > 10 ? 1 : 3)}`}
+              <RangeField key={c} label={`${game.env[c].currency} · ${game.fx[game.env[c].currency].toFixed(game.fx[game.env[c].currency] > 10 ? 1 : 3)}`}
                 value={Math.round(d.countries[c].hedgeRatio * 100)} min={0} max={100} step={10} disabled={readOnly} format={(v) => `${v}%`}
                 onChange={(v) => update((x) => { x.countries[c].hedgeRatio = v / 100; })} />
             ))}
           </Card>
-          <Card title="Bảo hiểm rủi ro chính trị (insurance_policies)">
-            <p className="small muted">Bảo hiểm mới mua có hiệu lực từ vòng sau – không bồi thường hồi tố. Basic: 50% tổn thất, hạn mức $1M, khấu trừ $50K. Premium: 85%, $3M, $25K.</p>
+          <Card title="Political risk insurance">
             <div className="table-wrap"><table>
-              <thead><tr><th>Quốc gia</th><th className="num">Rủi ro</th><th>Hiện tại</th><th>Vòng này</th></tr></thead>
+              <thead><tr><th>Country</th><th className="num">Risk</th><th>Current</th><th>This round</th></tr></thead>
               <tbody>{COUNTRIES.map((c) => {
                 const p = co.countries[c];
                 return (
                   <tr key={c}>
-                    <td>{COUNTRY_VI[c]}</td>
+                    <td>{COUNTRY_NAME[c]}</td>
                     <td className="num">{game.env[c].politicalRisk}</td>
-                    <td>{p.politicalPolicy ? <Badge tone={p.politicalPolicy.activeFrom <= game.round ? 'good' : 'warn'}>{p.politicalPolicy.tier} {p.politicalPolicy.activeFrom > game.round ? `(từ v${p.politicalPolicy.activeFrom})` : ''}</Badge> : '—'}</td>
+                    <td>{p.politicalPolicy ? <Badge tone={p.politicalPolicy.activeFrom <= game.round ? 'good' : 'warn'}>{p.politicalPolicy.tier}{p.politicalPolicy.activeFrom > game.round ? ` · from R${p.politicalPolicy.activeFrom}` : ''}</Badge> : '—'}</td>
                     <td><select value={d.countries[c].politicalPolicy} disabled={readOnly || (p.status !== 'active' && p.status !== 'pending' && d.countries[c].entryAction !== 'enter')} onChange={(e) => update((x) => { x.countries[c].politicalPolicy = e.target.value as PolicyTier; })}>
-                      <option value="none">Không</option><option value="basic">Basic (0,6%/quý)</option><option value="premium">Premium (1,2%/quý)</option>
+                      <option value="none">None</option><option value="basic">Basic · 0.6%/qtr</option><option value="premium">Premium · 1.2%/qtr</option>
                     </select></td>
                   </tr>
                 );
               })}</tbody>
             </table></div>
           </Card>
-          <Card title="Tóm tắt bảng cân đối">
+          <Card title="Balance sheet">
             <div className="table-wrap"><table><tbody>
-              <tr><td>Tiền mặt</td><td className="num">{fmtK(L.cash)}</td></tr>
-              <tr><td>Phải thu</td><td className="num">{fmtK(L.receivables)}</td></tr>
-              <tr><td>Hàng tồn kho (kể cả đang đi đường)</td><td className="num">{fmtK(L.inventory)}</td></tr>
-              <tr><td>Nhà xưởng, thiết bị</td><td className="num">{fmtK(L.ppe)}</td></tr>
-              <tr><td>Tài sản vô hình</td><td className="num">{fmtK(L.intangibles)}</td></tr>
-              <tr><td>Nợ vay</td><td className="num">{fmtK(L.debt)}</td></tr>
-              <tr><td>Lỗ thuế chuyển sang</td><td className="num">{fmtK(co.taxLossCarry)}</td></tr>
-              <tr><td>Tỷ giá VND</td><td className="num">{fmtNum(game.fx.VND)}</td></tr>
+              <tr><td>Cash</td><td className="num">{fmtK(L.cash)}</td></tr>
+              <tr><td>Receivables</td><td className="num">{fmtK(L.receivables)}</td></tr>
+              <tr><td>Inventory</td><td className="num">{fmtK(L.inventory)}</td></tr>
+              <tr><td>Property, plant & equipment</td><td className="num">{fmtK(L.ppe)}</td></tr>
+              <tr><td>Intangibles</td><td className="num">{fmtK(L.intangibles)}</td></tr>
+              <tr><td>Debt</td><td className="num">{fmtK(L.debt)}</td></tr>
+              <tr><td>Tax loss carry-forward</td><td className="num">{fmtK(co.taxLossCarry)}</td></tr>
+              <tr><td>VND per USD</td><td className="num">{fmtNum(game.fx.VND)}</td></tr>
             </tbody></table></div>
           </Card>
         </div>

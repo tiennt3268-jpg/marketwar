@@ -8,8 +8,8 @@ export default function Finance() {
   const { game, company: co } = useTeam();
   const [tab, setTab] = useState<'is' | 'bs' | 'cf' | 'gl'>('is');
   const hist = co.history;
-  if (!hist.length) return <Empty>Chưa có báo cáo – cần xử lý ít nhất một vòng.</Empty>;
-  const label = (round: number) => (round <= game.scenario.practiceRounds ? `T${round}` : `V${round - game.scenario.practiceRounds}`);
+  if (!hist.length) return <Empty>No statements yet.</Empty>;
+  const label = (round: number) => (round <= game.scenario.practiceRounds ? `P${round}` : `R${round - game.scenario.practiceRounds}`);
   const cols = hist.slice(-8);
   const row = (name: string, get: (h: typeof hist[number]) => number, cls = '', negate = false) => (
     <tr className={cls}><td>{name}</td>{cols.map((h) => { const v = get(h) * (negate ? -1 : 1); return <td key={h.round} className={`num ${v < 0 ? 'bad' : ''}`}>{fmtK(v)}</td>; })}</tr>
@@ -19,55 +19,55 @@ export default function Finance() {
 
   return (
     <div>
-      <div className="section-title"><div><h1>Báo cáo tài chính hợp nhất</h1><div className="muted small">Đơn vị: USD (đồng tiền báo cáo). Sổ kép: mọi bút toán cân Nợ = Có; bảng cân đối luôn cân.</div></div>
-        <button className="btn sm" onClick={() => downloadText(`${co.name}-financials.csv`, toCsv(hist, label), 'text/csv')}>Xuất CSV</button>
+      <div className="section-title"><h1>Financial Statements (USD)</h1>
+        <button className="btn sm" onClick={() => downloadText(`${co.name}-financials.csv`, toCsv(hist, label), 'text/csv')}>Export CSV</button>
       </div>
-      <Tabs value={tab} onChange={setTab} items={[{ value: 'is', label: 'Kết quả kinh doanh' }, { value: 'bs', label: 'Cân đối kế toán' }, { value: 'cf', label: 'Lưu chuyển tiền tệ' }, { value: 'gl', label: 'Sổ nhật ký (vòng gần nhất)' }]} />
+      <Tabs value={tab} onChange={setTab} items={[{ value: 'is', label: 'Income statement' }, { value: 'bs', label: 'Balance sheet' }, { value: 'cf', label: 'Cash flow' }, { value: 'gl', label: 'Journal' }]} />
       <Card>
         <div className="table-wrap"><table>
-          <thead>{tab === 'gl' ? <tr><th>Tài khoản</th><th className="num">Nợ</th><th className="num">Có</th></tr> : <tr><th /> {cols.map((h) => <th key={h.round} className="num">{label(h.round)}</th>)}</tr>}</thead>
+          <thead>{tab === 'gl' ? <tr><th>Account</th><th className="num">Debit</th><th className="num">Credit</th></tr> : <tr><th /> {cols.map((h) => <th key={h.round} className="num">{label(h.round)}</th>)}</tr>}</thead>
           {tab === 'is' && <tbody>
-            {row('Doanh thu bán hàng', (h) => h.income.revenue)}
-            {row('Phí bản quyền (royalty)', (h) => h.income.royaltyIncome)}
-            {row('Giá vốn hàng bán', (h) => h.income.cogs, '', true)}
-            {row('Lợi nhuận gộp', (h) => h.income.revenue + h.income.royaltyIncome - h.income.cogs, 'total')}
-            {row('Marketing & nghiên cứu', (h) => h.income.marketing, '', true)}
-            {row('R&D & phát triển SP', (h) => h.income.rnd, '', true)}
-            {row('Logistics & kho', (h) => h.income.logistics, '', true)}
-            {row('Thuế NK & phí', (h) => h.income.tariffs, '', true)}
-            {row('Quản lý, QC, nhân sự, thâm nhập', (h) => h.income.admin, '', true)}
-            {row('Khấu hao', (h) => h.income.depreciation, '', true)}
-            {row('Tổn thất rủi ro', (h) => h.income.riskLoss, '', true)}
-            {row('Bồi thường bảo hiểm', (h) => h.income.insuranceRecovery)}
-            {row('Lãi vay', (h) => h.income.interest, '', true)}
-            {row('Lãi/lỗ tỷ giá', (h) => h.income.fxGainLoss)}
-            {row('Thuế TNDN', (h) => h.income.tax, '', true)}
-            {row('Lợi nhuận ròng', (h) => h.income.netIncome, 'total')}
+            {row('Revenue', (h) => h.income.revenue)}
+            {row('Royalty income', (h) => h.income.royaltyIncome)}
+            {row('Cost of goods sold', (h) => h.income.cogs, '', true)}
+            {row('Gross profit', (h) => h.income.revenue + h.income.royaltyIncome - h.income.cogs, 'total')}
+            {row('Marketing & research', (h) => h.income.marketing, '', true)}
+            {row('R&D', (h) => h.income.rnd, '', true)}
+            {row('Logistics & warehousing', (h) => h.income.logistics, '', true)}
+            {row('Duties & levies', (h) => h.income.tariffs, '', true)}
+            {row('Admin, QC, staff, entry', (h) => h.income.admin, '', true)}
+            {row('Depreciation', (h) => h.income.depreciation, '', true)}
+            {row('Risk losses', (h) => h.income.riskLoss, '', true)}
+            {row('Insurance recoveries', (h) => h.income.insuranceRecovery)}
+            {row('Interest', (h) => h.income.interest, '', true)}
+            {row('FX gain/loss', (h) => h.income.fxGainLoss)}
+            {row('Income tax', (h) => h.income.tax, '', true)}
+            {row('Net income', (h) => h.income.netIncome, 'total')}
           </tbody>}
           {tab === 'bs' && <tbody>
-            {row('Tiền mặt', (h) => h.balance.cash)}
-            {row('Phải thu', (h) => h.balance.receivables)}
-            {row('Hàng tồn kho', (h) => h.balance.inventory)}
-            {row('Nhà xưởng, thiết bị (ròng)', (h) => h.balance.ppe)}
-            {row('Tài sản vô hình', (h) => h.balance.intangibles)}
-            {row('Tổng tài sản', (h) => h.balance.cash + h.balance.receivables + h.balance.inventory + h.balance.ppe + h.balance.intangibles, 'total')}
-            {row('Nợ vay', (h) => h.balance.debt)}
-            {row('Vốn góp', (h) => h.balance.equityCapital)}
-            {row('Lợi nhuận giữ lại', (h) => h.balance.retainedEarnings)}
-            {row('Tổng nguồn vốn', (h) => h.balance.debt + h.balance.equityCapital + h.balance.retainedEarnings, 'total')}
+            {row('Cash', (h) => h.balance.cash)}
+            {row('Receivables', (h) => h.balance.receivables)}
+            {row('Inventory', (h) => h.balance.inventory)}
+            {row('PP&E (net)', (h) => h.balance.ppe)}
+            {row('Intangibles', (h) => h.balance.intangibles)}
+            {row('Total assets', (h) => h.balance.cash + h.balance.receivables + h.balance.inventory + h.balance.ppe + h.balance.intangibles, 'total')}
+            {row('Debt', (h) => h.balance.debt)}
+            {row('Paid-in capital', (h) => h.balance.equityCapital)}
+            {row('Retained earnings', (h) => h.balance.retainedEarnings)}
+            {row('Total liabilities & equity', (h) => h.balance.debt + h.balance.equityCapital + h.balance.retainedEarnings, 'total')}
           </tbody>}
           {tab === 'gl' && <tbody>
-            {myEntries.length === 0 ? <tr><td className="muted">Không có bút toán (chỉ lưu sổ nhật ký 4 vòng gần nhất).</td></tr> : myEntries.flatMap((e, i) => [
-              <tr key={`h${i}`} className="sub"><td colSpan={cols.length + 1}><b>{e.source}</b> – {e.memo}</td></tr>,
-              ...e.lines.map((l, j) => <tr key={`l${i}-${j}`}><td style={{ paddingLeft: l.credit > 0 ? 36 : 18 }}>{l.credit > 0 ? 'Có ' : 'Nợ '}{l.account}</td><td className="num">{l.debit > 0 ? fmtK(l.debit) : ''}</td><td className="num">{l.credit > 0 ? fmtK(l.credit) : ''}</td></tr>),
+            {myEntries.length === 0 ? <tr><td className="muted">No entries.</td></tr> : myEntries.flatMap((e, i) => [
+              <tr key={`h${i}`} className="sub"><td colSpan={cols.length + 1}><b>{e.source}</b> · {e.memo}</td></tr>,
+              ...e.lines.map((l, j) => <tr key={`l${i}-${j}`}><td style={{ paddingLeft: l.credit > 0 ? 36 : 18 }}>{l.credit > 0 ? 'Cr ' : 'Dr '}{l.account}</td><td className="num">{l.debit > 0 ? fmtK(l.debit) : ''}</td><td className="num">{l.credit > 0 ? fmtK(l.credit) : ''}</td></tr>),
             ])}
           </tbody>}
           {tab === 'cf' && <tbody>
-            {row('Tiền đầu kỳ', (h) => h.cashFlow.opening)}
-            {row('Từ hoạt động kinh doanh', (h) => h.cashFlow.operating)}
-            {row('Từ hoạt động đầu tư', (h) => h.cashFlow.investing)}
-            {row('Từ hoạt động tài chính', (h) => h.cashFlow.financing)}
-            {row('Tiền cuối kỳ', (h) => h.cashFlow.closing, 'total')}
+            {row('Opening cash', (h) => h.cashFlow.opening)}
+            {row('Operating', (h) => h.cashFlow.operating)}
+            {row('Investing', (h) => h.cashFlow.investing)}
+            {row('Financing', (h) => h.cashFlow.financing)}
+            {row('Closing cash', (h) => h.cashFlow.closing, 'total')}
           </tbody>}
         </table></div>
       </Card>

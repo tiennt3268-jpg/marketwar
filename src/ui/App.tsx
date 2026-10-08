@@ -4,7 +4,9 @@ import { carryForward } from '../engine/decisions';
 import { isScored, totalRounds } from '../engine/engine';
 import { Ctx, type GameCtx, type Viewer } from './context';
 import { saveGame } from './store';
+import { currentUser, logout } from './auth';
 import { Badge } from './components';
+import Login from './pages/Login';
 import Home from './pages/Home';
 import Overview from './pages/Overview';
 import Intelligence from './pages/Intelligence';
@@ -19,30 +21,28 @@ import Finance from './pages/Finance';
 import Leaderboard from './pages/Leaderboard';
 import History from './pages/History';
 import GameMaster from './pages/GameMaster';
-import Guide from './pages/Guide';
 
 const TEAM_NAV: { group: string; items: { id: string; label: string }[] }[] = [
-  { group: 'Điều hành', items: [{ id: 'overview', label: 'Tổng quan' }, { id: 'intelligence', label: 'Thông tin thị trường' }] },
-  { group: 'Quyết định', items: [
-    { id: 'product', label: 'Product Lab' }, { id: 'strategy', label: 'Chiến lược & Thâm nhập' },
-    { id: 'marketing', label: 'Marketing & Giá' }, { id: 'operations', label: 'Sản xuất & Logistics' },
-    { id: 'treasury', label: 'Tài chính & Rủi ro' }, { id: 'submit', label: 'Kiểm tra & Nộp' },
+  { group: 'Company', items: [{ id: 'overview', label: 'Overview' }, { id: 'intelligence', label: 'Market Intelligence' }] },
+  { group: 'Decisions', items: [
+    { id: 'product', label: 'Product Lab' }, { id: 'strategy', label: 'Strategy & Entry' },
+    { id: 'marketing', label: 'Marketing & Pricing' }, { id: 'operations', label: 'Operations & Logistics' },
+    { id: 'treasury', label: 'Finance & Risk' }, { id: 'submit', label: 'Review & Submit' },
   ] },
-  { group: 'Kết quả', items: [
-    { id: 'reports', label: 'Thị phần & Định vị' }, { id: 'finance', label: 'Báo cáo tài chính' },
-    { id: 'leaderboard', label: 'Bảng xếp hạng' }, { id: 'history', label: 'Lịch sử & Nhật ký' },
+  { group: 'Results', items: [
+    { id: 'reports', label: 'Market Share & Positioning' }, { id: 'finance', label: 'Financial Statements' },
+    { id: 'leaderboard', label: 'Leaderboard' }, { id: 'history', label: 'History' },
   ] },
-  { group: 'Trợ giúp', items: [{ id: 'guide', label: 'Hướng dẫn chơi' }] },
 ];
-const GM_NAV = [{ group: 'Game Master', items: [{ id: 'gm', label: 'Điều khiển vòng' }, { id: 'reports', label: 'Thị phần & Định vị' }, { id: 'leaderboard', label: 'Bảng xếp hạng' }, { id: 'guide', label: 'Hướng dẫn' }] }];
+const GM_NAV = [{ group: 'Game Master', items: [{ id: 'gm', label: 'Round Control' }, { id: 'reports', label: 'Market Share & Positioning' }, { id: 'leaderboard', label: 'Leaderboard' }] }];
 
 export default function App() {
+  const [user, setUser] = useState<string | null>(() => currentUser());
   const [game, setGameState] = useState<GameState | null>(null);
   const [viewer, setViewer] = useState<Viewer>({ role: 'gm' });
   const [page, setPage] = useState('overview');
   const [menuOpen, setMenuOpen] = useState(false);
   const [pinPrompt, setPinPrompt] = useState<{ companyId: string; value: string; error?: string } | null>(null);
-
 
   const setGame = useCallback((g: GameState) => {
     setGameState(g);
@@ -55,6 +55,8 @@ export default function App() {
     if (firstHuman) { setViewer({ role: 'team', companyId: firstHuman.id }); setPage('overview'); }
     else { setViewer({ role: 'gm' }); setPage('gm'); }
   };
+
+  const signOut = () => { logout(); setGameState(null); setUser(null); };
 
   const ctx: GameCtx | null = useMemo(() => {
     if (!game) return null;
@@ -74,7 +76,8 @@ export default function App() {
     };
   }, [game, viewer, setGame]);
 
-  if (!game || !ctx) return <Home onOpen={openGame} />;
+  if (!user) return <Login onLogin={setUser} />;
+  if (!game || !ctx) return <Home user={user} onOpen={openGame} onSignOut={signOut} />;
 
   const switchViewer = (val: string) => {
     if (val === 'gm') { setViewer({ role: 'gm' }); setPage('gm'); return; }
@@ -85,7 +88,7 @@ export default function App() {
 
   const nav = viewer.role === 'gm' ? GM_NAV : TEAM_NAV;
   const scored = isScored(game, game.round);
-  const roundLabel = game.phase === 'FINISHED' ? 'Kết thúc' : scored ? `Vòng ${game.round - game.scenario.practiceRounds}/${game.scenario.scoredRounds}` : `Vòng thử ${game.round}/${game.scenario.practiceRounds}`;
+  const roundLabel = game.phase === 'FINISHED' ? 'Finished' : scored ? `Round ${game.round - game.scenario.practiceRounds}/${game.scenario.scoredRounds}` : `Practice ${game.round}/${game.scenario.practiceRounds}`;
   const submittedCount = game.companies.filter((c) => c.isBot || game.decisions[c.id]?.submitted || c.status === 'bankrupt').length;
 
   let body: ReactElement;
@@ -103,7 +106,6 @@ export default function App() {
     case 'finance': body = teamOnly(<Finance />); break;
     case 'leaderboard': body = <Leaderboard />; break;
     case 'history': body = teamOnly(<History />); break;
-    case 'guide': body = <Guide />; break;
     default: body = <GameMaster />;
   }
 
@@ -111,7 +113,7 @@ export default function App() {
     <Ctx.Provider value={ctx}>
       <div className="app">
         <aside className={`sidebar ${menuOpen ? 'open' : ''}`}>
-          <div className="brand"><div>Market Wars<small>Vietnam Goes Global</small></div></div>
+          <div className="brand">Market Wars</div>
           {nav.map((g) => (
             <div key={g.group}>
               <div className="nav-group">{g.group}</div>
@@ -122,9 +124,10 @@ export default function App() {
               </nav>
             </div>
           ))}
-          <div className="nav-group">Trò chơi</div>
+          <div className="nav-group">Account</div>
           <nav className="nav">
-            <button onClick={() => { setGameState(null); }}>Thoát về sảnh</button>
+            <button onClick={() => setGameState(null)}>Back to lobby</button>
+            <button onClick={signOut}>Sign out ({user})</button>
           </nav>
         </aside>
         <div className="main" onClick={() => menuOpen && setMenuOpen(false)}>
@@ -134,18 +137,16 @@ export default function App() {
               <strong>{game.name}</strong>
               <Badge tone={scored ? 'accent' : 'info'}>{roundLabel}</Badge>
               <Badge tone={game.phase === 'OPEN' ? 'good' : game.phase === 'FINISHED' ? 'warn' : undefined}>{game.phase}</Badge>
-              <span className="small muted">Đã nộp {submittedCount}/{game.companies.length}</span>
-              {game.round <= totalRounds(game) && game.activeEvents.length > 0 && <Badge tone="warn">{game.activeEvents.length} sự kiện</Badge>}
+              <span className="small muted">Submitted {submittedCount}/{game.companies.length}</span>
+              {game.round <= totalRounds(game) && game.activeEvents.length > 0 && <Badge tone="warn">{game.activeEvents.length} active event{game.activeEvents.length > 1 ? 's' : ''}</Badge>}
             </div>
-            <div className="row">
-              <label className="row small">
-                <span className="muted">Đang xem:</span>
-                <select value={viewer.role === 'gm' ? 'gm' : viewer.companyId} onChange={(e) => switchViewer(e.target.value)} style={{ width: 'auto' }}>
-                  <option value="gm">Game Master</option>
-                  {game.companies.map((c) => <option key={c.id} value={c.id}>{c.isBot ? 'Bot ·' : 'Đội ·'} {c.name}{game.pins?.[c.id] ? ' ' : ''}</option>)}
-                </select>
-              </label>
-            </div>
+            <label className="row small">
+              <span className="muted">Viewing as</span>
+              <select id="viewer-select" value={viewer.role === 'gm' ? 'gm' : viewer.companyId} onChange={(e) => switchViewer(e.target.value)} style={{ width: 'auto' }}>
+                <option value="gm">Game Master</option>
+                {game.companies.map((c) => <option key={c.id} value={c.id}>{c.isBot ? 'Bot' : 'Team'} · {c.name}</option>)}
+              </select>
+            </label>
           </header>
           <main className="content">{body}</main>
         </div>
@@ -155,12 +156,12 @@ export default function App() {
           <form className="modal stack" onClick={(e) => e.stopPropagation()} onSubmit={(e) => {
             e.preventDefault();
             if (game.pins?.[pinPrompt.companyId] === pinPrompt.value) { setViewer({ role: 'team', companyId: pinPrompt.companyId }); if (page === 'gm') setPage('overview'); setPinPrompt(null); }
-            else setPinPrompt({ ...pinPrompt, error: 'Sai mã PIN' });
+            else setPinPrompt({ ...pinPrompt, error: 'Wrong PIN' });
           }}>
-            <h3>Nhập PIN của đội</h3>
-            <input type="password" autoFocus value={pinPrompt.value} onChange={(e) => setPinPrompt({ ...pinPrompt, value: e.target.value })} />
+            <h3>Team PIN</h3>
+            <input id="pin-input" type="password" autoFocus value={pinPrompt.value} onChange={(e) => setPinPrompt({ ...pinPrompt, value: e.target.value })} />
             {pinPrompt.error && <div className="bad small">{pinPrompt.error}</div>}
-            <div className="row"><button className="btn primary" type="submit">Mở</button><button className="btn" type="button" onClick={() => setPinPrompt(null)}>Huỷ</button></div>
+            <div className="row"><button className="btn primary" type="submit">Open</button><button className="btn" type="button" onClick={() => setPinPrompt(null)}>Cancel</button></div>
           </form>
         </div>
       )}

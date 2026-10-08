@@ -1,8 +1,8 @@
 import { useState, type ReactNode } from 'react';
 import type { CountryCode, SegmentId } from '../engine/types';
 
-export const COUNTRY_VI: Record<CountryCode, string> = { CN: 'Trung Quốc', JP: 'Nhật Bản', US: 'Hoa Kỳ', GB: 'Vương quốc Anh' };
-export const SEGMENT_VI: Record<SegmentId, string> = { budget: 'Budget (giá rẻ)', mainstream: 'Mainstream (đại chúng)', premium: 'Premium (cao cấp)', health: 'Health-conscious (sức khỏe)' };
+export const COUNTRY_NAME: Record<CountryCode, string> = { CN: 'China', JP: 'Japan', US: 'United States', GB: 'United Kingdom' };
+export const SEGMENT_NAME: Record<SegmentId, string> = { budget: 'Budget', mainstream: 'Mainstream', premium: 'Premium', health: 'Health-conscious' };
 
 export function Card({ title, actions, children, className }: { title?: ReactNode; actions?: ReactNode; children: ReactNode; className?: string }) {
   return (
