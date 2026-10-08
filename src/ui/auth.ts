@@ -143,3 +143,10 @@ export async function updateProfile(username: string, profile: Profile): Promise
 }
 
 export const displayName = (username: string) => getAccount(username)?.profile.fullName || username;
+
+/** Find exactly one student account by username, student ID or email ("username · name · id" also accepted). */
+export function findAccount(accounts: User[], text: string): User | null {
+  const key = text.trim().toLowerCase().split(' · ')[0];
+  if (!key) return null;
+  return accounts.find((a) => a.username === key || a.profile.studentId.toLowerCase() === key || a.profile.email.toLowerCase() === key) ?? null;
+}

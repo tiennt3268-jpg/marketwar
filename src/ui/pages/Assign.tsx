@@ -2,21 +2,17 @@ import { useState } from 'react';
 import { useGame } from '../context';
 import { Badge, Card, Empty } from '../components';
 import { assignAccount, companyOwner, memberCompany, unassignAccount } from '../../engine/members';
-import { getAccount, listAccounts, type User } from '../auth';
+import { findAccount, getAccount, listAccounts } from '../auth';
+import { getClass } from '../store';
 import { notify } from '../notifications';
 import type { GameState } from '../../engine/types';
 
-/** Find exactly one student account by username, student ID or email. */
-function findAccount(accounts: User[], text: string): User | null {
-  const q = text.trim().toLowerCase();
-  if (!q) return null;
-  const key = q.split(' · ')[0];
-  return accounts.find((a) => a.username === key || a.profile.studentId.toLowerCase() === key || a.profile.email.toLowerCase() === key) ?? null;
-}
-
 export default function Assign() {
   const { game, setGame, user } = useGame();
-  const accounts = listAccounts();
+  const cls = getClass(game.classId);
+  const roster = cls?.students ?? [];
+  // Only students enrolled in the game's class can run one of its companies.
+  const accounts = listAccounts().filter((a) => !cls || roster.includes(a.username));
   const humans = game.companies.filter((c) => !c.isBot);
   const [inputs, setInputs] = useState<Record<string, string>>({});
   const [error, setError] = useState<Record<string, string>>({});
@@ -27,7 +23,7 @@ export default function Assign() {
   const assign = (companyId: string) => {
     const acc = findAccount(accounts, inputs[companyId] ?? '');
     const co = game.companies.find((c) => c.id === companyId)!;
-    if (!acc) { setError({ ...error, [companyId]: 'No student account matches exactly. Use username, student ID or email.' }); return; }
+    if (!acc) { setError({ ...error, [companyId]: cls ? 'No student in this class matches exactly. Add the student to the class first.' : 'No student account matches exactly.' }); return; }
     try {
       const prev = companyOwner(game, companyId);
       let g = prev && prev !== acc.username ? unassignAccount(game, prev) : game;
@@ -56,6 +52,7 @@ export default function Assign() {
   return (
     <div>
       <div className="section-title"><h1>Assign Companies</h1><Badge tone={assigned === humans.length ? 'good' : 'warn'}>{assigned}/{humans.length} assigned</Badge></div>
+      {cls && <div className="alert info small" style={{ marginBottom: 14 }}>Class {cls.code || cls.name}: {roster.length} student{roster.length === 1 ? '' : 's'} on the roster · {roster.filter((u) => !memberCompany(game, u)).length} not assigned</div>}
       <datalist id="student-accounts">
         {accounts.filter((a) => !memberCompany(game, a.username)).map((a) => <option key={a.username} value={`${a.username} · ${a.profile.fullName} · ${a.profile.studentId}`} />)}
       </datalist>
@@ -93,8 +90,8 @@ export default function Assign() {
         </div>
       )}
 
-      <Card title={`Registered students (${accounts.length})`} actions={<input id="student-search" type="text" placeholder="Search" value={query} onChange={(e) => setQuery(e.target.value)} style={{ width: 200 }} />}>
-        {shown.length === 0 ? <p className="muted small">No student accounts.</p> : (
+      <Card title={cls ? `Class roster (${accounts.length})` : `Registered students (${accounts.length})`} actions={<input id="student-search" type="text" placeholder="Search" value={query} onChange={(e) => setQuery(e.target.value)} style={{ width: 200 }} />}>
+        {shown.length === 0 ? <p className="muted small">{cls ? 'No students on the class roster. Add students from the class page.' : 'No student accounts.'}</p> : (
           <div className="table-wrap"><table>
             <thead><tr><th>Name</th><th>Username</th><th>Student ID</th><th>Email</th><th>Class</th><th>Registered</th><th>Company</th></tr></thead>
             <tbody>{shown.map((a) => {
@@ -108,7 +105,22 @@ export default function Assign() {
                   <td>{a.profile.email || '—'}</td>
                   <td>{a.profile.cohort || '—'}</td>
                   <td>{new Date(a.createdAt).toLocaleDateString('en-GB')}</td>
-                  <td>{co ? <span className="inline"><i className="dot" style={{ background: co.color }} />{co.name}</span> : <span className="muted">—</span>}</td>
+                  <td>
+                    <select id={`quick-${a.username}`} value={co?.id ?? ''} style={{ width: 'auto' }} onChange={(e) => {
+                      const v = e.target.value;
+                      try {
+                        if (!v) { commit(unassignAccount(game, a.username), `${a.username} unassigned`); return; }
+                        const prev = companyOwner(game, v);
+                        let g = prev && prev !== a.username ? unassignAccount(game, prev) : game;
+                        g = assignAccount(g, a.username, v);
+                        commit(g, `${v} → ${a.username}`);
+                        notify([a.username], { gameId: game.id, gameName: game.name, kind: 'assign', title: `You now run ${game.companies.find((c) => c.id === v)?.name}` });
+                      } catch (err) { setError({ ...error, [v]: (err as Error).message }); }
+                    }}>
+                      <option value="">Not assigned</option>
+                      {humans.map((c) => { const o = companyOwner(game, c.id); return <option key={c.id} value={c.id}>{c.name}{o && o !== a.username ? ` (replace ${o})` : ''}</option>; })}
+                    </select>
+                  </td>
                 </tr>
               );
             })}</tbody>

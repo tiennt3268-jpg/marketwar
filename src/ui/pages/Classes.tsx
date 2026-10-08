@@ -44,7 +44,7 @@ export default function Classes({ user, onSelect, onOpenGame, onSignOut, notific
   };
 
   // Players only see classes in which they run a company.
-  const visible = isAdmin ? classes : classes.filter((c) => listSaved(c.id).some((g) => g.members?.includes(user.username)));
+  const visible = isAdmin ? classes : classes.filter((c) => c.students?.includes(user.username) || listSaved(c.id).some((g) => g.members?.includes(user.username)));
   const shown = visible.filter((c) => `${c.name} ${c.code} ${c.term}`.toLowerCase().includes(query.trim().toLowerCase()));
 
   return (
@@ -71,7 +71,7 @@ export default function Classes({ user, onSelect, onOpenGame, onSignOut, notific
                     <button className="class-open" onClick={() => onSelect(c)}>
                       <span className="class-code">{c.code || '—'}</span>
                       <span className="class-name">{c.name}</span>
-                      <span className="small muted">{c.term ? `${c.term} · ` : ''}{games.length} game{games.length === 1 ? '' : 's'}{active ? ` · ${active} active` : ''}</span>
+                      <span className="small muted">{c.term ? `${c.term} · ` : ''}{isAdmin ? `${(c.students ?? []).length} students · ` : ''}{games.length} game{games.length === 1 ? '' : 's'}{active ? ` · ${active} active` : ''}</span>
                     </button>
                     {isAdmin && (confirmDel === c.id
                       ? <button className="btn sm danger" onClick={() => { deleteClass(c.id); setClasses(listClasses()); setConfirmDel(null); }}>Confirm delete</button>

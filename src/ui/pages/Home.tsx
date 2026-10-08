@@ -7,14 +7,18 @@ import type { BotLevel, BotStrategy, GameState } from '../../engine/types';
 import type { User } from '../auth';
 import { deleteGame, listSaved, loadGame, type ClassInfo } from '../store';
 import { Badge, Card, Empty, NumField, SelectField } from '../components';
+import ClassStudents from './ClassStudents';
 
 const COLORS = ['#1f8f4e', '#2a78d6', '#eb6834', '#4a3aa7', '#eda100', '#e87ba4', '#1baf7a', '#8a5a00'];
 const DEFAULT_NAMES = ['Saigon Brew', 'Hanoi Roasters', 'Mekong Coffee', 'Dalat Highlands', 'Hue Heritage', 'Da Nang Drip', 'Can Tho Cafe', 'Ha Long Beans'];
 
 type TeamRow = TeamConfig;
 
-export default function Home({ user, cls, onOpen, onBack, onSignOut, notifications }: { user: User; cls: ClassInfo; onOpen: (g: GameState) => void; onBack: () => void; onSignOut: () => void; notifications?: React.ReactNode }) {
+export default function Home({ user, cls: clsProp, onOpen, onBack, onSignOut, onClassChange, notifications }: { user: User; cls: ClassInfo; onOpen: (g: GameState, page?: string) => void; onBack: () => void; onSignOut: () => void; onClassChange?: (c: ClassInfo) => void; notifications?: React.ReactNode }) {
   const isAdmin = user.role === 'admin';
+  const [cls, setKlass] = useState(clsProp);
+  const [tab, setTab] = useState<'students' | 'games'>(() => ((clsProp.students ?? []).length ? 'games' : 'students'));
+  const roster = cls.students ?? [];
   const [name, setName] = useState(`${cls.name} – Game 1`);
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 1_000_000));
   const [practice, setPractice] = useState(2);
@@ -69,6 +73,7 @@ export default function Home({ user, cls, onOpen, onBack, onSignOut, notificatio
               <div className="row">
                 <Badge tone={s.phase === 'FINISHED' ? 'warn' : 'good'}>{s.phase}</Badge>
                 <button className="btn sm primary" onClick={() => { const g = loadGame(s.id); if (g) onOpen(g); }}>Open</button>
+                {isAdmin && <button className="btn sm" onClick={() => { const g = loadGame(s.id); if (g) onOpen(g, 'assign'); }}>Assign students</button>}
                 {isAdmin && (confirmDel === s.id
                   ? <button className="btn sm danger" onClick={() => { deleteGame(s.id); setSaved(visible()); setConfirmDel(null); }}>Confirm delete</button>
                   : <button className="btn sm ghost" onClick={() => setConfirmDel(s.id)}>Delete</button>)}
@@ -102,7 +107,20 @@ export default function Home({ user, cls, onOpen, onBack, onSignOut, notificatio
         </div>
       </div>
 
-      {!isAdmin ? gamesCard : (
+      {!isAdmin ? (
+        <div className="stack">
+          {!roster.includes(user.username) && <div className="alert warn small">You are not on this class roster.</div>}
+          {roster.includes(user.username) && saved.length === 0 && <div className="alert info small">You are in this class. The Game Master has not assigned you to a company yet.</div>}
+          {gamesCard}
+        </div>
+      ) : (
+        <>
+        <div className="steps">
+          <button className={`step ${tab === 'students' ? 'active' : ''}`} onClick={() => setTab('students')}><b>1</b> Add students to class <span className="muted">({roster.length})</span></button>
+          <button className={`step ${tab === 'games' ? 'active' : ''}`} onClick={() => setTab('games')}><b>2</b> Create game</button>
+          <button className="step" disabled={!saved.length} onClick={() => { const first = saved[0]; const g = first && loadGame(first.id); if (g) onOpen(g, 'assign'); }}><b>3</b> Assign students to companies</button>
+        </div>
+        {tab === 'students' ? <ClassStudents cls={cls} onChange={(c) => { setKlass(c); onClassChange?.(c); }} /> : (
         <div className="grid g2" style={{ alignItems: 'start' }}>
           <Card title="New game">
             <div className="stack">
@@ -138,6 +156,8 @@ export default function Home({ user, cls, onOpen, onBack, onSignOut, notificatio
           </Card>
           {gamesCard}
         </div>
+        )}
+        </>
       )}
     </div>
   );

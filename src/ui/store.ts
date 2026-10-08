@@ -71,7 +71,7 @@ export function downloadText(filename: string, text: string, mime = 'application
 
 /* ------------------------------------------------------------- classes */
 
-export interface ClassInfo { id: string; name: string; code: string; term: string; createdBy: string; createdAt: string }
+export interface ClassInfo { id: string; name: string; code: string; term: string; createdBy: string; createdAt: string; students?: string[] }
 const CLASSES_KEY = 'marketwars:classes';
 let memoryClasses: ClassInfo[] = [];
 
@@ -87,10 +87,39 @@ function writeClasses(list: ClassInfo[]) {
 }
 
 export function saveClass(c: ClassInfo) {
-  writeClasses([c, ...listClasses().filter((x) => x.id !== c.id)]);
+  const list = listClasses();
+  writeClasses(list.some((x) => x.id === c.id) ? list.map((x) => (x.id === c.id ? c : x)) : [c, ...list]);
 }
 
 export function deleteClass(id: string) {
   for (const g of listSaved(id)) deleteGame(g.id);
   writeClasses(listClasses().filter((x) => x.id !== id));
+}
+
+export function getClass(id: string | undefined): ClassInfo | null {
+  return id ? listClasses().find((c) => c.id === id) ?? null : null;
+}
+
+/** Enrol a student account in a class roster. */
+export function enrollStudent(classId: string, username: string): ClassInfo {
+  const c = getClass(classId);
+  if (!c) throw new Error('Class not found');
+  if (c.students?.includes(username)) throw new Error(`${username} is already in this class`);
+  const next = { ...c, students: [...(c.students ?? []), username] };
+  saveClass(next);
+  return next;
+}
+
+/** Remove a student from a class roster and from every company they run in that class. */
+export function unenrollStudent(classId: string, username: string): ClassInfo {
+  const c = getClass(classId);
+  if (!c) throw new Error('Class not found');
+  for (const m of listSaved(classId)) {
+    if (!m.members?.includes(username)) continue;
+    const g = loadGame(m.id);
+    if (g) saveGame({ ...g, members: (g.members ?? []).filter((x) => x.username !== username) });
+  }
+  const next = { ...c, students: (c.students ?? []).filter((u) => u !== username) };
+  saveClass(next);
+  return next;
 }

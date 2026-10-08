@@ -71,11 +71,11 @@ export default function App() {
     if (Date.parse(game.schedule.deadline) <= now) setGame(catchUp(game, now));
   }, [now, game, setGame]);
 
-  const openGame = (input: GameState) => {
+  const openGame = (input: GameState, target?: string) => {
     const g = catchUp(input);
-    if (g !== input) saveGame(g);
+    saveGame(g);
     setGameState(g);
-    if (user?.role === 'admin') { setViewer({ role: 'gm' }); setPage('gm'); return; }
+    if (user?.role === 'admin') { setViewer({ role: 'gm' }); setPage(target ?? 'gm'); return; }
     const m = g.members?.find((x) => x.username === user?.username);
     if (m) setViewer({ role: 'team', companyId: m.companyId });
     setPage('overview');
@@ -112,7 +112,7 @@ export default function App() {
 
   if (!user) return <Login onLogin={setUser} />;
   if (!cls && !game) return <Classes user={user} onSelect={setCls} onOpenGame={openGame} onSignOut={signOut} notifications={<NotificationsButton username={user.username} onOpenGame={openById} />} />;
-  if (!game || !ctx) return cls && <Home user={user} cls={cls!} onOpen={openGame} onBack={() => setCls(null)} onSignOut={signOut} notifications={<NotificationsButton username={user.username} onOpenGame={openById} />} />;
+  if (!game || !ctx) return cls && <Home user={user} cls={cls!} onOpen={openGame} onBack={() => setCls(null)} onClassChange={setCls} onSignOut={signOut} notifications={<NotificationsButton username={user.username} onOpenGame={openById} />} />;
 
   if (!isAdmin && !membership) {
     return (

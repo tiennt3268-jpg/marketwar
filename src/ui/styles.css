@@ -301,3 +301,13 @@ tbody tr:hover td { background: #fafcfb; }
 .profile dt { color: var(--muted); } .profile dd { margin: 0; overflow-wrap: anywhere; }
 .match { color: var(--green-dark); background: var(--green-soft); padding: 6px 8px; border-radius: var(--radius); }
 input[type='email'], input[type='datetime-local'] { background: var(--bg); border: 1px solid var(--line-strong); border-radius: var(--radius); padding: 7px 9px; width: 100%; min-width: 0; }
+
+/* class workflow */
+.steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+.step { display: flex; align-items: center; gap: 10px; padding: 12px 14px; text-align: left; background: #ffffff; border: 1px solid var(--line); border-top: 3px solid var(--line-strong); border-radius: var(--radius); cursor: pointer; color: var(--text); font-weight: 700; }
+.step b { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--subtle); color: var(--green-dark); flex: none; }
+.step.active { border-top-color: var(--green); background: var(--green-soft); }
+.step.active b { background: var(--green); color: #ffffff; }
+.step:disabled { opacity: .5; cursor: not-allowed; }
+.enroll-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: end; }
+@media (max-width: 680px) { .steps { grid-template-columns: minmax(0, 1fr); } .enroll-row { grid-template-columns: minmax(0, 1fr); } }
