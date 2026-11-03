@@ -48,7 +48,7 @@ export default function Leaderboard() {
             const ni = cumNI(co.id);
             return (
               <tr key={x.companyId} className={company?.id === x.companyId ? 'hl' : ''}>
-                <td><b>{x.rank}</b>{move !== 0 && <span className={`rank-move ${move > 0 ? 'up' : 'down'}`}>{move > 0 ? `+${move}` : move}</span>}</td>
+                <td><b className={`rank-chip r${x.rank}`}>{x.rank}</b>{move !== 0 && <span className={`rank-move ${move > 0 ? 'up' : 'down'}`}>{move > 0 ? `+${move}` : move}</span>}</td>
                 <td><span className="inline"><i className="dot" style={{ background: co.color }} />{co.name} {co.isBot && <Badge>bot</Badge>} {co.status === 'bankrupt' && <Badge tone="bad">Bankrupt</Badge>}</span></td>
                 <td className="num"><b>{x.score.toFixed(1)}</b></td>
                 {PARTS.map(([k]) => <td key={k} className="num">{(x.parts[k] ?? 0).toFixed(0)}</td>)}

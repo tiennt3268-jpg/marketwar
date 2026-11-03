@@ -26,6 +26,10 @@ SINGLE=1 npx vite build   # gói toàn bộ game thành một file HTML duy nh�
 3. Chọn **Game Master** → **Lock & process round**. Kết quả được công bố: thị phần, bản đồ định vị, báo cáo tài chính, bảng xếp hạng.
 4. Mặc định 2 vòng thử (reset về điểm xuất phát) + 8 vòng tính điểm; mỗi vòng = 1 quý. Game tự lưu trong trình duyệt, có thể xuất/nhập file JSON.
 
+Phân quyền (`src/ui/access.ts`):
+- **Game Master (admin)**: tạo lớp, thêm sinh viên vào lớp, tạo game, gán công ty, điều khiển vòng. Có thể xem mọi công ty nhưng chỉ ở chế độ chỉ đọc, không ra quyết định thay sinh viên.
+- **Sinh viên**: chỉ thấy lớp/game mình được gán, chỉ chỉnh và nộp quyết định cho công ty của mình, xem kết quả công bố chung (Round Report, Market Share, Leaderboard). Không vào được trang Round Control hay Assign Companies.
+
 Điểm: Lợi nhuận luỹ kế 30% · Thị phần toàn cầu 25% · ROIC 20% · Thương hiệu 15% · Khả năng chống chịu 10% (chuẩn hoá theo ngưỡng, trọng số chỉnh được).
 
 ## Những gì đã hiện thực (đối chiếu SRS)

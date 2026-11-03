@@ -7,7 +7,9 @@ import { listClasses, loadGame, saveGame, type ClassInfo } from './store';
 import { catchUp, timeLeft } from './rounds';
 import NotificationsButton from './Notifications';
 import { currentUser, logout, type User } from './auth';
+import { canEditCompany, canOpenPage } from './access';
 import { Badge, Empty } from './components';
+import { fmtK } from '../engine/util';
 import Login from './pages/Login';
 import Home from './pages/Home';
 import Classes from './pages/Classes';
@@ -94,9 +96,7 @@ export default function App() {
     if (!game || !user) return null;
     const company = viewer.role === 'team' ? game.companies.find((c) => c.id === viewer.companyId) ?? null : null;
     const decision = company ? game.decisions[company.id] ?? carryForward(undefined, company, game.scenario, game.round) : null;
-    const owner = company ? game.members?.find((m) => m.companyId === company.id)?.username : undefined;
-    const notMine = !!company && !isAdmin && owner !== user.username;
-    const readOnly = !company || company.isBot || company.status === 'bankrupt' || game.phase !== 'OPEN' || !!decision?.submitted || notMine;
+    const readOnly = !company || !canEditCompany(user, game, company.id) || !!decision?.submitted;
     return {
       game, setGame, viewer, company, decision, readOnly, user,
       go: (p: string) => { setPage(p); setMenuOpen(false); window.scrollTo(0, 0); },
@@ -108,7 +108,7 @@ export default function App() {
         setGame({ ...game, decisions: { ...game.decisions, [company.id]: next } });
       },
     };
-  }, [game, viewer, setGame, user, isAdmin]);
+  }, [game, viewer, setGame, user]);
 
   if (!user) return <Login onLogin={setUser} />;
   if (!cls && !game) return <Classes user={user} onSelect={setCls} onOpenGame={openGame} onSignOut={signOut} notifications={<NotificationsButton username={user.username} onOpenGame={openById} />} />;
@@ -136,21 +136,21 @@ export default function App() {
   const submittedCount = game.companies.filter((c) => c.isBot || game.decisions[c.id]?.submitted || c.status === 'bankrupt').length;
 
   let body: ReactElement;
-  const teamOnly = (el: ReactElement) => (ctx.company ? el : <GameMaster />);
-  switch (page) {
-    case 'overview': body = teamOnly(<Overview />); break;
-    case 'intelligence': body = teamOnly(<Intelligence />); break;
-    case 'product': body = teamOnly(<ProductLab />); break;
-    case 'strategy': body = teamOnly(<Strategy />); break;
-    case 'marketing': body = teamOnly(<Marketing />); break;
-    case 'operations': body = teamOnly(<Operations />); break;
-    case 'treasury': body = teamOnly(<Treasury />); break;
-    case 'submit': body = teamOnly(<Submit />); break;
+  const shown = canOpenPage(user, page, !!ctx.company) ? page : isAdmin && !ctx.company ? 'gm' : 'overview';
+  switch (shown) {
+    case 'overview': body = <Overview />; break;
+    case 'intelligence': body = <Intelligence />; break;
+    case 'product': body = <ProductLab />; break;
+    case 'strategy': body = <Strategy />; break;
+    case 'marketing': body = <Marketing />; break;
+    case 'operations': body = <Operations />; break;
+    case 'treasury': body = <Treasury />; break;
+    case 'submit': body = <Submit />; break;
     case 'reports': body = <Reports />; break;
-    case 'finance': body = teamOnly(<Finance />); break;
+    case 'finance': body = <Finance />; break;
     case 'leaderboard': body = <Leaderboard />; break;
-    case 'history': body = teamOnly(<History />); break;
-    case 'assign': body = isAdmin ? <Assign /> : teamOnly(<Overview />); break;
+    case 'history': body = <History />; break;
+    case 'assign': body = <Assign />; break;
     case 'report': body = <Report />; break;
     default: body = <GameMaster />;
   }
@@ -165,7 +165,7 @@ export default function App() {
               <div className="nav-group">{g.group}</div>
               <nav className="nav">
                 {g.items.map((it) => (
-                  <button key={it.id} className={page === it.id ? 'active' : ''} onClick={() => ctx.go(it.id)}>{it.label}</button>
+                  <button key={it.id} className={shown === it.id ? 'active' : ''} onClick={() => ctx.go(it.id)}>{it.label}</button>
                 ))}
               </nav>
             </div>
@@ -184,7 +184,6 @@ export default function App() {
               <strong>{game.name}</strong>
               <Badge tone={scored ? 'accent' : 'info'}>{roundLabel}</Badge>
               <Badge tone={game.phase === 'OPEN' ? 'good' : game.phase === 'FINISHED' ? 'warn' : undefined}>{game.phase}</Badge>
-              <span className="small muted">Submitted {submittedCount}/{game.companies.length}</span>
               {game.round <= totalRounds(game) && game.activeEvents.length > 0 && <Badge tone="warn">{game.activeEvents.length} active event{game.activeEvents.length > 1 ? 's' : ''}</Badge>}
               {game.schedule?.deadline && game.phase === 'OPEN' && <span className="deadline-chip" title={new Date(game.schedule.deadline).toLocaleString('en-GB')}>Deadline {timeLeft(game.schedule.deadline, now)}</span>}
             </div>
@@ -204,6 +203,24 @@ export default function App() {
               </div>
             )}
           </header>
+          <div className="hud">
+            <div className="hud-round">
+              <span className="hud-label">{game.phase === 'FINISHED' ? 'Game over' : scored ? 'Round' : 'Practice'}</span>
+              <b>{game.phase === 'FINISHED' ? '—' : scored ? `${game.round - game.scenario.practiceRounds}/${game.scenario.scoredRounds}` : `${game.round}/${game.scenario.practiceRounds}`}</b>
+              <div className="hud-xp"><div style={{ width: `${Math.min(100, ((game.round - 1) / totalRounds(game)) * 100)}%` }} /></div>
+            </div>
+            {ctx.company && (() => {
+              const lb = game.results[game.results.length - 1]?.leaderboard.find((x) => x.companyId === ctx.company!.id);
+              return (
+                <>
+                  <div className="hud-stat"><span className="hud-label">Cash</span><b>{fmtK(ctx.company.ledger.cash)}</b></div>
+                  <div className={`hud-stat rank-${lb?.rank ?? 0}`}><span className="hud-label">Rank</span><b>{lb ? `#${lb.rank} of ${game.companies.length}` : '—'}</b></div>
+                  <div className="hud-stat"><span className="hud-label">Score</span><b>{lb ? lb.score.toFixed(1) : '—'}</b></div>
+                </>
+              );
+            })()}
+            <div className="hud-stat"><span className="hud-label">Turns in</span><b>{submittedCount}/{game.companies.length}</b></div>
+          </div>
           <main className="content">
             {body}
           </main>
