@@ -8,6 +8,14 @@ import { isScored } from '../../engine/engine';
 import { totalAssets } from '../../engine/ledger';
 import { fmtK, fmtNum, fmtPct, sum } from '../../engine/util';
 
+const MISSIONS = [
+  { page: 'product', label: 'Product Lab', color: 'blue' },
+  { page: 'strategy', label: 'Strategy & Entry', color: 'green' },
+  { page: 'marketing', label: 'Marketing & Pricing', color: 'yellow' },
+  { page: 'operations', label: 'Operations', color: 'red' },
+  { page: 'treasury', label: 'Finance & Risk', color: 'purple' },
+];
+
 export default function Overview() {
   const { game, company: co, decision: d, go } = useTeam();
   const L = co.ledger;
@@ -34,6 +42,19 @@ export default function Overview() {
           <div className="muted small">{co.status === 'bankrupt' ? <b className="bad">In administration</b> : 'Active'}{last?.strategyInferred ? ` · ${last.strategyInferred}` : ''}</div>
         </div>
         {d.submitted ? <Badge tone="good">Round {game.round} submitted</Badge> : game.phase === 'OPEN' ? <button className="btn primary" onClick={() => go('submit')}>Review & submit</button> : null}
+      </div>
+
+      <div className="missions">
+        {MISSIONS.map((m, i) => {
+          const done = todo.find((t) => t.page === m.page)?.done;
+          return (
+            <button key={m.page} className={`mission m-${m.color} ${done ? 'done' : ''}`} onClick={() => go(m.page)}>
+              <span className="chip">{`0${i + 1}`}</span>
+              <b>{m.label}</b>
+              <span className="state">{done ? 'Done' : 'Open'}</span>
+            </button>
+          );
+        })}
       </div>
 
       <div className="grid g4">
